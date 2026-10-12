@@ -4,9 +4,12 @@
  */
 function renderMatchForm() {
   const players = (state.dbData.rankings && state.dbData.rankings[state.currentMod]) 
-    ? state.dbData.rankings[state.currentMod] 
+    ? [...state.dbData.rankings[state.currentMod]] 
     : [];
   
+  // Ordena os jogadores alfabeticamente para os seletores
+  players.sort((a, b) => a.nome.localeCompare(b.nome));
+
   const formContainer = document.getElementById('matchForm');
   const submitBtn = document.getElementById('btnSubmitMatch');
   
@@ -19,7 +22,6 @@ function renderMatchForm() {
     return;
   }
 
-  // Redireciona para o modo individual caso o total de jogadores caia para menos de 4
   if (state.modoJogo === 'equipe' && players.length < 4) {
     state.modoJogo = 'individual';
   }
@@ -74,7 +76,7 @@ function buildIndividualFormHTML(players) {
     return `<input type="hidden" id="qtdMesa" value="2"><div id="dynamicPlayersContainer"></div>`;
   } else {
     const maxPlayers = state.currentMod === 'Domino' ? Math.min(4, players.length) : Math.min(10, players.length);
-    let defaultCount = Math.min(state.currentMod === 'Domino' ? 4 : 3, maxPlayers);
+    let defaultCount = Math.min(state.currentMod === 'Domino' ? 4 : 2, maxPlayers);
     if (defaultCount < 2) defaultCount = 2;
 
     return `
@@ -143,13 +145,17 @@ function updateTeamCountOptions() {
 }
 
 /**
- * Atualiza dinamicamente a exibição dos cards de jogadores com base no tamanho da mesa e no modo selecionado.
+ * Atualiza dinamicamente a exibição dos cards de jogadores preservando estado pré-existente.
  */
 function updateDynamicPlayersForm() {
   const container = document.getElementById('dynamicPlayersContainer');
   if (!container) return;
 
-  const players = state.dbData.rankings[state.currentMod] || [];
+  const players = (state.dbData.rankings && state.dbData.rankings[state.currentMod]) 
+    ? [...state.dbData.rankings[state.currentMod]] 
+    : [];
+  
+  players.sort((a, b) => a.nome.localeCompare(b.nome));
 
   if (state.modoJogo === 'equipe' && (state.currentMod === 'Domino' || state.currentMod === 'Uno')) {
     if (state.currentMod === 'Uno') {
@@ -166,7 +172,7 @@ function updateDynamicPlayersForm() {
 }
 
 /**
- * Renderiza os cards de seletores para o modo individual.
+ * Renderiza os cards individuais preservando dados preenchidos anteriormente.
  */
 function renderIndividualTable(container, players) {
   const countInput = document.getElementById('qtdMesa');
@@ -176,24 +182,49 @@ function renderIndividualTable(container, players) {
   if (playerLimit > maxAllowed) { playerLimit = maxAllowed; if (countInput) countInput.value = playerLimit; }
   if (playerLimit < 2) { playerLimit = 2; if (countInput) countInput.value = playerLimit; }
 
+  // Captura estado atual preenchido pelo usuário para preservar ao redimensionar
+  const existingCards = container.querySelectorAll('.player-card');
+  const savedData = [];
+  existingCards.forEach((card) => {
+    const selPlayer = card.querySelector('.mPlayer');
+    const selRes = card.querySelector('.mResultado');
+    const inpPecas = card.querySelector('.mPecasCartas');
+    savedData.push({
+      playerId: selPlayer ? selPlayer.value : '',
+      resultado: selRes ? selRes.value : '',
+      pecasCartas: inpPecas ? inpPecas.value : ''
+    });
+  });
+
+  // Valida se o conjunto de resultados faz sentido (se só tem derrotas ou empates sem vitória)
+  let vitoriasCount = 0;
+  for (let i = 0; i < playerLimit; i++) {
+    if (savedData[i] && savedData[i].resultado === 'vitoria') vitoriasCount++;
+  }
+  if (savedData.length > 0 && vitoriasCount === 0 && (state.currentMod === 'Uno' || state.currentMod === 'Domino')) {
+    if (savedData[0]) savedData[0].resultado = 'vitoria';
+  }
+
   let htmlContent = '';
   for (let i = 0; i < playerLimit; i++) {
-    let selectedPlayerId = players[i % players.length] ? players[i % players.length].id : '';
+    let currentSaved = savedData[i] || {};
+    let selectedPlayerId = currentSaved.playerId || players[i % players.length]?.id || '';
     let options = players.map(p => `<option value="${p.id}" ${p.id === selectedPlayerId ? 'selected' : ''}>${p.nome} (${Math.round(p.rating)})</option>`).join('');
 
+    let defaultRes = currentSaved.resultado || (i === 0 ? 'vitoria' : 'derrota');
     let resOptions = state.currentMod === 'Uno' 
-      ? `<option value="vitoria" ${i === 0 ? 'selected' : ''}>Vitória</option><option value="derrota" ${i > 0 ? 'selected' : ''}>Derrota</option>`
-      : `<option value="vitoria" ${i === 0 ? 'selected' : ''}>Vitória</option><option value="derrota" ${i > 0 ? 'selected' : ''}>Derrota</option><option value="empate">Empate</option>`;
+      ? `<option value="vitoria" ${defaultRes === 'vitoria' ? 'selected' : ''}>Vitória</option><option value="derrota" ${defaultRes === 'derrota' || defaultRes !== 'vitoria' ? 'selected' : ''}>Derrota</option>`
+      : `<option value="vitoria" ${defaultRes === 'vitoria' ? 'selected' : ''}>Vitória</option><option value="derrota" ${defaultRes === 'derrota' ? 'selected' : ''}>Derrota</option><option value="empate" ${defaultRes === 'empate' ? 'selected' : ''}>Empate</option>`;
 
     let fieldHtml = '';
     if (state.currentMod !== 'Xadrez') {
-      let label = '', minVal = 0, maxVal = 100, defaultVal = 0;
+      let label = '', minVal = 0, maxVal = 100, defaultVal = currentSaved.pecasCartas !== undefined && currentSaved.pecasCartas !== '' ? currentSaved.pecasCartas : (i === 0 ? 0 : 1);
       if (state.currentMod === 'Damas') {
-        label = 'Peças restantes:'; maxVal = 12; minVal = (i === 0) ? 1 : 0; defaultVal = (i === 0) ? 1 : 0;
+        label = 'Peças restantes:'; maxVal = 12; minVal = (i === 0) ? 1 : 0;
       } else if (state.currentMod === 'Uno') {
-        label = 'Cartas restantes:'; maxVal = 108 - (playerLimit - 1); minVal = (i > 0) ? 1 : 0; defaultVal = (i > 0) ? 1 : 0;
+        label = 'Cartas restantes:'; maxVal = 108 - (playerLimit - 1); minVal = (i > 0) ? 1 : 0;
       } else if (state.currentMod === 'Domino') {
-        label = 'Pontinhos restantes:'; minVal = 0; defaultVal = (i === 0) ? 0 : 1;
+        label = 'Pontinhos restantes:'; minVal = 0;
         maxVal = (playerLimit === 2) ? 153 : (playerLimit === 3 ? 118 : 69);
       }
       fieldHtml = `<label class="lblPecasCartas" style="margin-top:8px; display:block;">${label}</label><input type="number" class="mPecasCartas" value="${defaultVal}" min="${minVal}" max="${maxVal}">`;
@@ -216,7 +247,7 @@ function renderIndividualTable(container, players) {
 }
 
 /**
- * Renderiza os containers coloridos e seletores agrupados por equipe.
+ * Renderiza os containers de equipes preservando os dados preenchidos anteriormente.
  */
 function renderTeamTable(container, players) {
   const sizeInput = document.getElementById('tamanhoGrupo');
@@ -226,25 +257,43 @@ function renderTeamTable(container, players) {
   const numTeams = countInput ? parseInt(countInput.value) || 2 : 2;
   const totalPlayers = teamSize * numTeams;
 
+  // Captura estado atual das equipes para preservar ao alterar quantidade
+  const existingTeams = container.querySelectorAll('.team-container');
+  const savedTeams = [];
+  existingTeams.forEach((teamEl) => {
+    const selRes = teamEl.querySelector('.mTeamResultado');
+    const inpPecas = teamEl.querySelector('.mTeamPecasCartas');
+    const pSelects = teamEl.querySelectorAll('.mPlayer');
+    const pIds = Array.from(pSelects).map(s => s.value);
+    savedTeams.push({
+      resultado: selRes ? selRes.value : '',
+      pecasCartas: inpPecas ? inpPecas.value : '',
+      playerIds: pIds
+    });
+  });
+
   let htmlContent = '';
   let playerCounter = 0;
 
   for (let teamIdx = 0; teamIdx < numTeams; teamIdx++) {
     const colorClass = `team-bg-${teamIdx % 5}`;
+    const currentSavedTeam = savedTeams[teamIdx] || {};
     
+    let defaultRes = currentSavedTeam.resultado || (teamIdx === 0 ? 'vitoria' : 'derrota');
     let resOptions = state.currentMod === 'Uno'
-      ? `<option value="vitoria" ${teamIdx === 0 ? 'selected' : ''}>Vitória</option><option value="derrota" ${teamIdx > 0 ? 'selected' : ''}>Derrota</option>`
-      : `<option value="vitoria" ${teamIdx === 0 ? 'selected' : ''}>Vitória</option><option value="derrota" ${teamIdx > 0 ? 'selected' : ''}>Derrota</option><option value="empate">Empate</option>`;
+      ? `<option value="vitoria" ${defaultRes === 'vitoria' ? 'selected' : ''}>Vitória</option><option value="derrota" ${defaultRes === 'derrota' || defaultRes !== 'vitoria' ? 'selected' : ''}>Derrota</option>`
+      : `<option value="vitoria" ${defaultRes === 'vitoria' ? 'selected' : ''}>Vitória</option><option value="derrota" ${defaultRes === 'derrota' ? 'selected' : ''}>Derrota</option><option value="empate" ${defaultRes === 'empate' ? 'selected' : ''}>Empate</option>`;
 
     let fieldHtml = '';
+    let defaultValPecas = currentSavedTeam.pecasCartas !== undefined && currentSavedTeam.pecasCartas !== '' ? currentSavedTeam.pecasCartas : (teamIdx === 0 ? 0 : 1);
     if (state.currentMod === 'Domino') {
       fieldHtml = `<label style="margin-top:8px; display:block; font-weight:600;">Pontinhos restantes da Equipe:</label>
-                   <input type="number" class="mTeamPecasCartas" data-team="${teamIdx}" value="${teamIdx === 0 ? 0 : 1}" min="0" max="118">`;
+                   <input type="number" class="mTeamPecasCartas" data-team="${teamIdx}" value="${defaultValPecas}" min="0" max="118">`;
     } else if (state.currentMod === 'Uno') {
       const virtualOpponents = totalPlayers - teamSize + 1;
       const maxCards = 108 - (virtualOpponents - 1);
       fieldHtml = `<label style="margin-top:8px; display:block; font-weight:600;">Cartas restantes da Equipe:</label>
-                   <input type="number" class="mTeamPecasCartas" data-team="${teamIdx}" value="${teamIdx === 0 ? 0 : 1}" min="${teamIdx === 0 ? 0 : 1}" max="${maxCards}">`;
+                   <input type="number" class="mTeamPecasCartas" data-team="${teamIdx}" value="${defaultValPecas}" min="${teamIdx === 0 ? 0 : 1}" max="${maxCards}">`;
     }
 
     htmlContent += `
@@ -263,7 +312,8 @@ function renderTeamTable(container, players) {
     `;
 
     for (let p = 0; p < teamSize; p++) {
-      let selectedPlayerId = players[playerCounter % players.length] ? players[playerCounter % players.length].id : '';
+      let savedIdForSlot = currentSavedTeam.playerIds && currentSavedTeam.playerIds[p] ? currentSavedTeam.playerIds[p] : '';
+      let selectedPlayerId = savedIdForSlot || players[playerCounter % players.length]?.id || '';
       let options = players.map(pl => `<option value="${pl.id}" ${pl.id === selectedPlayerId ? 'selected' : ''}>${pl.nome} (${Math.round(pl.rating)})</option>`).join('');
 
       htmlContent += `
@@ -419,16 +469,26 @@ function adjustPieceCardLimits(index) {
  */
 function validatePlayerSelection() {
   const playerSelects = document.querySelectorAll('.mPlayer');
-  const selectedIds = [];
+  const idCounts = {};
+
+  // Conta quantas vezes cada ID de jogador foi selecionado na mesa
+  playerSelects.forEach(select => {
+    const id = select.value;
+    if (id) {
+      idCounts[id] = (idCounts[id] || 0) + 1;
+    }
+  });
+
   let hasDuplicate = false;
 
+  // Aplica o destaque vermelho em todos os selects cujo ID apareça mais de uma vez
   playerSelects.forEach(select => {
-    if (selectedIds.includes(select.value)) {
+    const id = select.value;
+    if (id && idCounts[id] > 1) {
       hasDuplicate = true;
       select.style.borderColor = 'var(--danger)';
     } else {
       select.style.borderColor = 'var(--card-border)';
-      selectedIds.push(select.value);
     }
   });
 

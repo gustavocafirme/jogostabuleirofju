@@ -27,8 +27,8 @@ async function loadData() {
   document.getElementById('historicoContainer').classList.add('form-disabled');
 
   if (state.isFirstLoad) {
-    document.getElementById('rankingTableBody').innerHTML = '<tr><td colspan="5" class="loading-text">Carregando...</td></tr>';
-    document.getElementById('backupTableBody').innerHTML = '<tr><td colspan="6" class="loading-text">Carregando...</td></tr>';
+    document.getElementById('rankingTableBody').innerHTML = '<tr><td colspan="6" class="loading-text">Carregando...</td></tr>';
+    document.getElementById('backupTableBody').innerHTML = '<tr><td colspan="7" class="loading-text">Carregando...</td></tr>';
     document.getElementById('historicoTableBody').innerHTML = '<tr><td colspan="5" class="loading-text">Carregando...</td></tr>';
   } else {
     document.getElementById('rankingLoadingTag').classList.remove('hidden');

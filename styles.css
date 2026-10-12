@@ -1,24 +1,24 @@
 /* Variáveis globais de tema e paleta de cores */
-:root { 
-  --bg: #090e17; 
-  --card: #131c2e; 
+:root {
+  --bg: #090e17;
+  --card: #131c2e;
   --card-border: #1e2c48;
-  --primary: #2563eb; 
+  --primary: #2563eb;
   --primary-hover: #1d4ed8;
-  --text: #f1f5f9; 
-  --muted: #94a3b8; 
-  --danger: #dc2626; 
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --danger: #dc2626;
   --danger-hover: #b91c1c;
   --success: #16a34a;
   --accent-red: #f60c0d;
 }
 
-body { 
-  font-family: system-ui, -apple-system, sans-serif; 
-  background: var(--bg); 
-  color: var(--text); 
-  margin: 0; 
-  padding: 15px; 
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 15px;
 }
 
 /* Elementos visuais da tela de autenticação */
@@ -70,20 +70,20 @@ body {
 .header-user-info { display: flex; align-items: center; gap: 12px; margin-bottom: -8px; z-index: 2; }
 .header-actions { z-index: 2; }
 
-.btn-refresh { 
-  background: #1b2845; 
-  border: 1px solid var(--card-border); 
-  color: var(--text); 
-  width: auto; 
-  padding: 6px 12px; 
-  margin: 0; 
-  cursor: pointer; 
-  border-radius: 6px; 
-  font-size: 0.85rem; 
-  display: flex; 
-  align-items: center; 
-  gap: 5px; 
-  transition: background 0.2s; 
+.btn-refresh {
+  background: #1b2845;
+  border: 1px solid var(--card-border);
+  color: var(--text);
+  width: auto;
+  padding: 6px 12px;
+  margin: 0;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.2s;
 }
 .btn-refresh:hover { border-color: var(--primary); background: #223354; color: #fff; }
 
@@ -101,15 +101,16 @@ body {
 .subtab-btn:hover { color: var(--text); border-color: var(--primary); }
 
 /* Estilização dos painéis/containers de conteúdo */
-.section { 
-  background: var(--card); 
-  padding: 24px; 
-  border-radius: 12px; 
-  border: 1px solid var(--card-border); 
-  margin-bottom: 20px; 
-  position: relative; 
-  box-shadow: 0 4px 20px rgba(0,0,0,0.25); 
-  z-index: 1; 
+.section {
+  background: var(--card);
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  margin-bottom: 20px;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  z-index: 1;
+  overflow-x: auto;
 }
 
 .section::before {
@@ -125,8 +126,20 @@ body {
 }
 
 /* Tabelas de dados */
-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--card-border); font-size: 0.9rem; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+th, td {
+  padding: 12px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--card-border);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
 th { color: var(--primary); font-weight: 600; }
 
 /* Estados visuais e utilitários */
@@ -135,17 +148,17 @@ table.grayed-out-full { opacity: 0.4; filter: grayscale(100%); pointer-events: n
 .form-disabled { opacity: 0.4; pointer-events: none; filter: grayscale(100%); }
 
 /* Formulários e botões de ação */
-input, select, button { 
-  width: 100%; 
-  padding: 11px 14px; 
-  margin-top: 8px; 
-  border-radius: 8px; 
-  border: 1px solid var(--card-border); 
-  background: #0b111e; 
-  color: #fff; 
-  box-sizing: border-box; 
-  font-size: 0.95rem; 
-  transition: border-color 0.2s; 
+input, select, button {
+  width: 100%;
+  padding: 11px 14px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: #0b111e;
+  color: #fff;
+  box-sizing: border-box;
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
 }
 input:focus, select:focus { outline: none; border-color: var(--primary); }
 
@@ -220,3 +233,96 @@ button.btn-restore:hover { background: #15803d; }
 .team-bg-2 { background: rgba(22, 163, 22, 0.15); border-color: rgba(22, 163, 22, 0.4); }     /* Verde */
 .team-bg-3 { background: rgba(235, 175, 23, 0.15); border-color: rgba(235, 175, 23, 0.4); }  /* Amarelo */
 .team-bg-4 { background: rgba(144, 153, 184, 0.15); border-color: rgba(144, 153, 184, 0.4); } /* Prata */
+
+/* Responsividade e Scrollbar Horizontal para Tabelas em Telas Pequenas */
+.section table {
+  width: 100%;
+  min-width: 550px;
+  border-collapse: collapse;
+  table-layout: fixed; /* Força as colunas a respeitarem a distribuição proporcional */
+}
+
+.section th, .section td {
+  padding: 12px 14px;
+  white-space: nowrap;
+}
+
+/* Garante que o texto de carregamento/vazio ocupe o espaço correto da tabela */
+.section td.loading-text, .section td[colspan] {
+  width: 100%;
+  text-align: center;
+}
+
+/* Caixa com limite de altura (aprox. 4 linhas) e scroll vertical para o Histórico */
+.history-scroll-box {
+  max-height: 5.8em;
+  overflow-y: auto;
+  white-space: normal;
+  word-break: break-word;
+  padding-right: 4px;
+}
+
+/* Configuração específica de larguras para as colunas da tabela de Histórico (mantendo o painel em 1000px) */
+#sec-historico table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+#sec-historico th:nth-child(1), #sec-historico td:nth-child(1) {
+  min-width: 75px;
+  max-width: 135px;
+  white-space: normal;
+} /* Data/Hora */
+
+#sec-historico th:nth-child(2), #sec-historico td:nth-child(2) {
+  width: 110px;
+} /* Usuário */
+
+#sec-historico th:nth-child(3), #sec-historico td:nth-child(3) {
+  min-width: 75px;
+  max-width: 140px;
+  white-space: normal;
+} /* Ação */
+
+/* Configuração de larguras fixas e proporcionais para a tabela de Ranking */
+#sec-ranking table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+#sec-ranking th:nth-child(1), #sec-ranking td:nth-child(1) {
+  width: 24px; /* # (Posição/Ícone) */
+}
+
+#sec-ranking th:nth-child(2), #sec-ranking td:nth-child(2) {
+  width: auto; /* Nome (Absorve dinamicamente o espaço restante) */
+  white-space: normal;
+}
+
+#sec-ranking th:nth-child(3), #sec-ranking td:nth-child(3) {
+  width: 105px; /* Pontuação (Elo) */
+}
+
+#sec-ranking th:nth-child(4), #sec-ranking td:nth-child(4) {
+  width: 50px; /* Vitórias */
+}
+
+#sec-ranking th:nth-child(5), #sec-ranking td:nth-child(5) {
+  width: 50px; /* Partidas */
+}
+
+#sec-ranking th:nth-child(6), #sec-ranking td:nth-child(6) {
+  width: 75px; /* Ações (Botão Excluir) */
+}
+
+/* Linhas com cores de fundo alternadas (efeito zebrado suave) para Ranking e Histórico */
+#sec-ranking tbody tr:nth-child(even),
+#sec-historico tbody tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.18); /* Linha par ligeiramente mais clara/escura para contraste */
+}
+
+/* Opcional: Efeito hover suave ao passar o mouse pelas linhas */
+#sec-ranking tbody tr:hover,
+#sec-historico tbody tr:hover {
+  background-color: rgba(17, 42, 94, 0.5);
+}

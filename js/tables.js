@@ -10,7 +10,7 @@ function renderRankingTable() {
 
   const tableBody = document.getElementById('rankingTableBody');
   if (rankingList.length === 0) {
-    tableBody.innerHTML = '<tr><td colspan="5" class="loading-text">Nenhum jogador cadastrado.</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="6" class="loading-text">Nenhum jogador cadastrado.</td></tr>';
     return;
   }
 
@@ -27,6 +27,7 @@ function renderRankingTable() {
         <td>${positionDisplay}</td>
         <td>${player.nome}</td>
         <td><b>${Math.round(player.rating)}</b></td>
+        <td>${player.vitorias || 0}</td>
         <td>${player.partidas}</td>
         <td class="admin-only ${state.currentUser?.role !== 'admin' ? 'hidden' : ''}">
           <button class="btn-danger" onclick="deletePlayer('${player.id}', this)">Excluir</button>
@@ -46,7 +47,7 @@ function renderBackupTable() {
   
   const tableBody = document.getElementById('backupTableBody');
   if (backupList.length === 0) {
-    tableBody.innerHTML = '<tr><td colspan="6" class="loading-text">Nenhum jogador na lixeira.</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="7" class="loading-text">Nenhum jogador na lixeira.</td></tr>';
     return;
   }
 
@@ -54,6 +55,7 @@ function renderBackupTable() {
     <tr>
       <td>${player.nome}</td>
       <td>${Math.round(player.rating)}</td>
+      <td>${player.vitorias || 0}</td>
       <td>${player.partidas}</td>
       <td>${player.dataExclusao}</td>
       <td>${player.excluidoPor}</td>
@@ -81,8 +83,8 @@ function renderHistoryTable() {
       <td>${log.dataHora}</td>
       <td>${log.usuario}</td>
       <td>${log.acao}</td>
-      <td>${log.envolvidos}</td>
-      <td style="font-size:0.82rem; color:#94a3b8;">${log.detalhes}</td>
+      <td><div class="history-scroll-box">${log.envolvidos}</div></td>
+      <td><div class="history-scroll-box" style="font-size:0.82rem; color:#94a3b8;">${log.detalhes}</div></td>
     </tr>
   `).join('');
 }

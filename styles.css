@@ -262,27 +262,38 @@ button.btn-restore:hover { background: #15803d; }
   padding-right: 4px;
 }
 
-/* Configuração específica de larguras para as colunas da tabela de Histórico (mantendo o painel em 1000px) */
+/* Configuração de larguras e quebra de linha natural para a tabela de Histórico (sem scroll box) */
 #sec-historico table {
   table-layout: fixed;
   width: 100%;
+  min-width: 550px; /* Garante o limite mínimo antes de ativar o scroll horizontal geral da seção */
+}
+
+#sec-historico th, #sec-historico td {
+  white-space: normal;
+  word-break: break-word;
+  vertical-align: top; /* Alinha o conteúdo no topo para ficar limpo quando as linhas crescerem */
 }
 
 #sec-historico th:nth-child(1), #sec-historico td:nth-child(1) {
-  min-width: 75px;
-  max-width: 135px;
-  white-space: normal;
+  width: 75px;
 } /* Data/Hora */
 
 #sec-historico th:nth-child(2), #sec-historico td:nth-child(2) {
-  width: 110px;
+  width: 80px;
 } /* Usuário */
 
 #sec-historico th:nth-child(3), #sec-historico td:nth-child(3) {
-  min-width: 75px;
-  max-width: 140px;
-  white-space: normal;
+  width: 55px;
 } /* Ação */
+
+#sec-historico th:nth-child(4), #sec-historico td:nth-child(4) {
+  width: 30%;
+} /* Envolvidos */
+
+#sec-historico th:nth-child(5), #sec-historico td:nth-child(5) {
+  width: 70%; /* Detalhes (Absorve todo o restante do espaço fluidamente) */
+}
 
 /* Configuração de larguras fixas e proporcionais para a tabela de Ranking */
 #sec-ranking table {

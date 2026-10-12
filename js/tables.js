@@ -83,8 +83,8 @@ function renderHistoryTable() {
       <td>${log.dataHora}</td>
       <td>${log.usuario}</td>
       <td>${log.acao}</td>
-      <td><div class="history-scroll-box">${log.envolvidos}</div></td>
-      <td><div class="history-scroll-box" style="font-size:0.82rem; color:#94a3b8;">${log.detalhes}</div></td>
+      <td>${log.envolvidos}</td>
+      <td style="font-size:0.82rem; color:#94a3b8;">${log.detalhes}</td>
     </tr>
   `).join('');
 }

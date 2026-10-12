@@ -299,6 +299,7 @@ button.btn-restore:hover { background: #15803d; }
 #sec-ranking table {
   table-layout: fixed;
   width: 100%;
+  min-width: 470px;
 }
 
 #sec-ranking th:nth-child(1), #sec-ranking td:nth-child(1) {
@@ -306,20 +307,21 @@ button.btn-restore:hover { background: #15803d; }
 }
 
 #sec-ranking th:nth-child(2), #sec-ranking td:nth-child(2) {
-  width: auto; /* Nome (Absorve dinamicamente o espaço restante) */
+  width: 43%; /* Nome (Absorve dinamicamente o espaço restante) */
   white-space: normal;
 }
 
 #sec-ranking th:nth-child(3), #sec-ranking td:nth-child(3) {
-  width: 105px; /* Pontuação (Elo) */
+  width: 24%; /* Pontuação (Elo) */
+  white-space: normal;
 }
 
 #sec-ranking th:nth-child(4), #sec-ranking td:nth-child(4) {
-  width: 50px; /* Vitórias */
+  width: 16%; /* Vitórias */
 }
 
 #sec-ranking th:nth-child(5), #sec-ranking td:nth-child(5) {
-  width: 50px; /* Partidas */
+  width: 17%; /* Partidas */
 }
 
 #sec-ranking th:nth-child(6), #sec-ranking td:nth-child(6) {

@@ -21,17 +21,17 @@ function getCachedHistory() {
 }
 
 function fetchAndCacheAllAppData() {
-  const data = getAppDataFromSheet();
+  const appData = getAppDataFromSheet();
   const cache = CacheService.getScriptCache();
-  cache.put(CACHE_KEY_RANKINGS, JSON.stringify(data), CACHE_TTL_SECONDS);
-  return data;
+  cache.put(CACHE_KEY_RANKINGS, JSON.stringify(appData), CACHE_TTL_SECONDS);
+  return appData;
 }
 
 function fetchAndCacheAllHistory() {
-  const history = getHistoryFromSheet();
+  const historyData = getHistoryFromSheet();
   const cache = CacheService.getScriptCache();
-  cache.put(CACHE_KEY_HISTORY, JSON.stringify(history), CACHE_TTL_SECONDS);
-  return history;
+  cache.put(CACHE_KEY_HISTORY, JSON.stringify(historyData), CACHE_TTL_SECONDS);
+  return historyData;
 }
 
 function refreshAllCaches() {
@@ -42,17 +42,17 @@ function refreshAllCaches() {
 /**
  * Atualiza apenas o cache da modalidade afetada, evitando varreduras desnecessárias nas outras abas.
  */
-function updateModalityCache(modalidade) {
+function updateModalityCache(modality) {
   const cache = CacheService.getScriptCache();
   let cachedData = cache.get(CACHE_KEY_RANKINGS);
-  let resultado = cachedData ? JSON.parse(cachedData) : getAppDataFromSheet();
+  let result = cachedData ? JSON.parse(cachedData) : getAppDataFromSheet();
   
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(modalidade);
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = spreadsheet.getSheetByName(modality);
   if (sheet) {
-    const data = sheet.getDataRange().getValues();
-    data.shift();
-    resultado.rankings[modalidade] = data.map(row => ({
+    const sheetData = sheet.getDataRange().getValues();
+    sheetData.shift();
+    result.rankings[modality] = sheetData.map(row => ({
       id: row[0],
       nome: row[1],
       rating: Math.round(row[2]),
@@ -61,37 +61,37 @@ function updateModalityCache(modalidade) {
     }));
   }
 
-  const backupSheet = ss.getSheetByName('Backup_' + modalidade);
+  const backupSheet = spreadsheet.getSheetByName('Backup_' + modality);
   if (backupSheet) {
-    const bData = backupSheet.getDataRange().getValues();
-    bData.shift();
-    resultado.backups[modalidade] = bData.map(row => ({
+    const backupData = backupSheet.getDataRange().getValues();
+    backupData.shift();
+    result.backups[modality] = backupData.map(row => ({
       id: row[0],
       nome: row[1],
       rating: Math.round(row[2]),
       vitorias: parseInt(row[3]) || 0,
       partidas: parseInt(row[4]) || 0,
-      dataExclusao: row[5],
+      dataExclusao: row[5] ? Utilities.formatDate(new Date(row[5]), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss") : "",
       excluidoPor: row[6]
     }));
   }
 
-  cache.put(CACHE_KEY_RANKINGS, JSON.stringify(resultado), CACHE_TTL_SECONDS);
+  cache.put(CACHE_KEY_RANKINGS, JSON.stringify(result), CACHE_TTL_SECONDS);
   cache.remove(CACHE_KEY_HISTORY); // Invalida o cache de histórico para refletir novos logs
-  return resultado;
+  return result;
 }
 
 function getAppDataFromSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const modalidades = ['Xadrez', 'Damas', 'Domino', 'Uno'];
-  let resultado = { rankings: {}, backups: {} };
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const modalities = ['Xadrez', 'Damas', 'Domino', 'Uno'];
+  let result = { rankings: {}, backups: {} };
 
-  modalidades.forEach(mod => {
-    const sheet = ss.getSheetByName(mod);
+  modalities.forEach(mod => {
+    const sheet = spreadsheet.getSheetByName(mod);
     if (sheet) {
-      const data = sheet.getDataRange().getValues();
-      data.shift();
-      resultado.rankings[mod] = data.map(row => ({
+      const sheetData = sheet.getDataRange().getValues();
+      sheetData.shift();
+      result.rankings[mod] = sheetData.map(row => ({
         id: row[0],
         nome: row[1],
         rating: Math.round(row[2]),
@@ -100,11 +100,11 @@ function getAppDataFromSheet() {
       }));
     }
 
-    const backupSheet = ss.getSheetByName('Backup_' + mod);
+    const backupSheet = spreadsheet.getSheetByName('Backup_' + mod);
     if (backupSheet) {
-      const bData = backupSheet.getDataRange().getValues();
-      bData.shift();
-      resultado.backups[mod] = bData.map(row => ({
+      const backupData = backupSheet.getDataRange().getValues();
+      backupData.shift();
+      result.backups[mod] = backupData.map(row => ({
         id: row[0],
         nome: row[1],
         rating: Math.round(row[2]),
@@ -116,45 +116,46 @@ function getAppDataFromSheet() {
     }
   });
 
-  return resultado;
+  return result;
 }
 
 function getHistoryFromSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const modalidades = ['Xadrez', 'Damas', 'Domino', 'Uno'];
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const modalities = ['Xadrez', 'Damas', 'Domino', 'Uno'];
   let historyByMod = {};
 
-  modalidades.forEach(mod => {
+  modalities.forEach(mod => {
     historyByMod[mod] = [];
-    const sheet = ss.getSheetByName('Historico_' + mod);
+    const sheet = spreadsheet.getSheetByName('Historico_' + mod);
     if (sheet) {
       const rows = sheet.getDataRange().getValues();
-      for (let i = 1; i < rows.length; i++) {
-        historyByMod[mod].push({
-          rowIndex: i + 1,
-          dataHora: rows[i][0] ? Utilities.formatDate(new Date(rows[i][0]), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss") : "",
-          usuario: rows[i][1],
-          acao: rows[i][2],
+      const header = rows.shift(); 
+      
+      if (rows.length > 0) {
+        historyByMod[mod] = rows.map((row, index) => ({
+          rowIndex: index + 2,
+          dataHora: row[0] ? Utilities.formatDate(new Date(row[0]), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss") : "",
+          usuario: row[1],
+          acao: row[2],
           modalidade: mod,
-          envolvidos: rows[i][3],
-          detalhes: rows[i][4]
-        });
+          envolvidos: row[3],
+          detalhes: row[4]
+        })).reverse();
       }
-      historyByMod[mod].reverse();
     }
   });
 
   return historyByMod;
 }
 
-function registrarLog(usuario, acao, jogo, jogadoresEnvolvidos, detalhes) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheetName = 'Historico_' + jogo;
-  let sheet = ss.getSheetByName(sheetName);
+function registrarLog(user, action, game, involvedPlayers, details) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetName = 'Historico_' + game;
+  let sheet = spreadsheet.getSheetByName(sheetName);
   
   if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
+    sheet = spreadsheet.insertSheet(sheetName);
     sheet.appendRow(['DataHora', 'Usuario', 'Acao', 'Jogadores Envolvidos', 'Detalhes']);
   }
-  sheet.appendRow([new Date().toLocaleString('pt-BR'), usuario, acao, jogadoresEnvolvidos, detalhes]);
+  sheet.appendRow([new Date().toLocaleString('pt-BR'), user, action, involvedPlayers, details]);
 }

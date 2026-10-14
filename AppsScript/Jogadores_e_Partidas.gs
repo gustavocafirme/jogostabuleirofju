@@ -2,61 +2,61 @@
  * Regras de negócio, operações de CRUD de jogadores e cálculo de Elo/Partidas.
  */
 
-function handleAddPlayer(modalidade, nome, usuario) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(modalidade);
+function handleAddPlayer(modality, name, user) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(modality);
   const id = 'PL_' + new Date().getTime();
-  sheet.appendRow([id, nome, 500, 0, 0]); // ID, Nome, Elo, Vitórias, Partidas
+  sheet.appendRow([id, name, 500, 0, 0]); // ID, Nome, Elo, Vitórias, Partidas
   
-  registrarLog(usuario, 'Criação de Jogador', modalidade, nome, `ID gerado: ${id}`);
+  registrarLog(user, 'Criação de Jogador', modality, name, `ID gerado: ${id}`);
   
-  const updatedData = updateModalityCache(modalidade);
+  const updatedData = updateModalityCache(modality);
   return responseJSON({ status: 'success', data: updatedData });
 }
 
-function handleDeletePlayer(modalidade, playerId, usuario) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(modalidade);
-  const backupSheet = ss.getSheetByName('Backup_' + modalidade);
+function handleDeletePlayer(modality, playerId, user) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = spreadsheet.getSheetByName(modality);
+  const backupSheet = spreadsheet.getSheetByName('Backup_' + modality);
   
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === playerId) {
-      const p = data[i];
-      backupSheet.appendRow([p[0], p[1], p[2], p[3], p[4], new Date().toLocaleString('pt-BR'), usuario]);
+  const sheetData = sheet.getDataRange().getValues();
+  for (let i = 1; i < sheetData.length; i++) {
+    if (sheetData[i][0] === playerId) {
+      const playerRecord = sheetData[i];
+      backupSheet.appendRow([playerRecord[0], playerRecord[1], playerRecord[2], playerRecord[3], playerRecord[4], new Date().toLocaleString('pt-BR'), user]);
       sheet.deleteRow(i + 1);
-      registrarLog(usuario, 'Exclusão de Jogador', modalidade, p[1], `Movido para o backup por ${usuario}`);
+      registrarLog(user, 'Exclusão de Jogador', modality, playerRecord[1], `Movido para o backup por ${user}`);
       
-      const updatedData = updateModalityCache(modalidade);
+      const updatedData = updateModalityCache(modality);
       return responseJSON({ status: 'success', data: updatedData });
     }
   }
   return responseJSON({ status: 'error', message: 'Jogador não encontrado' });
 }
 
-function handleRestorePlayer(modalidade, playerId, usuario) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const backupSheet = ss.getSheetByName('Backup_' + modalidade);
-  const sheet = ss.getSheetByName(modalidade);
+function handleRestorePlayer(modality, playerId, user) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const backupSheet = spreadsheet.getSheetByName('Backup_' + modality);
+  const sheet = spreadsheet.getSheetByName(modality);
   
-  const data = backupSheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === playerId) {
-      const p = data[i];
-      sheet.appendRow([p[0], p[1], p[2], p[3], p[4]]);
+  const backupData = backupSheet.getDataRange().getValues();
+  for (let i = 1; i < backupData.length; i++) {
+    if (backupData[i][0] === playerId) {
+      const playerRecord = backupData[i];
+      sheet.appendRow([playerRecord[0], playerRecord[1], playerRecord[2], playerRecord[3], playerRecord[4]]);
       backupSheet.deleteRow(i + 1);
-      registrarLog(usuario, 'Restauração de Jogador', modalidade, p[1], `Restaurado por ${usuario}`);
+      registrarLog(user, 'Restauração de Jogador', modality, playerRecord[1], `Restaurado por ${user}`);
       
-      const updatedData = updateModalityCache(modalidade);
+      const updatedData = updateModalityCache(modality);
       return responseJSON({ status: 'success', data: updatedData });
     }
   }
   return responseJSON({ status: 'error', message: 'Jogador não encontrado no backup' });
 }
 
-function handleRecordMatch(data, usuario) {
-  const mod = data.modalidade;
-  const modoJogo = data.modoJogo || 'individual';
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(mod);
+function handleRecordMatch(payloadData, user) {
+  const modality = payloadData.modalidade;
+  const gameMode = payloadData.modoJogo || 'individual';
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(modality);
   const rows = sheet.getDataRange().getValues();
   
   let playersMap = {};
@@ -71,167 +71,167 @@ function handleRecordMatch(data, usuario) {
     };
   }
 
-  const playersList = data.jogadores;
+  const playersList = payloadData.jogadores;
 
-  const ids = playersList.map(p => p.id);
-  if (new Set(ids).size !== ids.length) {
+  const playerIds = playersList.map(p => p.id);
+  if (new Set(playerIds).size !== playerIds.length) {
     return responseJSON({ status: 'error', message: 'O mesmo jogador não pode ser selecionado mais de uma vez.' });
   }
 
-  let nomesEnvolvidos = playersList.map(p => playersMap[p.id] ? playersMap[p.id].nome : 'Desconhecido').join(', ');
-  let logDetalhesParts = [];
+  let involvedNames = playersList.map(p => playersMap[p.id] ? playersMap[p.id].nome : 'Desconhecido').join(', ');
+  let logDetailsParts = [];
   let eloChanges = [];
 
-  if (mod === 'Xadrez' || mod === 'Damas') {
+  if (modality === 'Xadrez' || modality === 'Damas') {
     if (playersList.length !== 2) {
       return responseJSON({ status: 'error', message: 'Xadrez e Damas exigem exatamente 2 jogadores.' });
     }
 
-    const pA = playersMap[playersList[0].id];
-    const pB = playersMap[playersList[1].id];
+    const playerA = playersMap[playersList[0].id];
+    const playerB = playersMap[playersList[1].id];
     
-    const oldRatingA = pA.rating;
-    const oldRatingB = pB.rating;
+    const oldRatingA = playerA.rating;
+    const oldRatingB = playerB.rating;
 
-    const EA = 1 / (1 + Math.pow(10, (pB.rating - pA.rating) / 400));
-    const EB = 1 - EA;
-    const KA = Math.max(16, 160 / Math.sqrt(pA.partidas + 1));
-    const KB = Math.max(16, 160 / Math.sqrt(pB.partidas + 1));
+    const expectedA = 1 / (1 + Math.pow(10, (playerB.rating - playerA.rating) / 400));
+    const expectedB = 1 - expectedA;
+    const factorA = Math.max(16, 160 / Math.sqrt(playerA.partidas + 1));
+    const factorB = Math.max(16, 160 / Math.sqrt(playerB.partidas + 1));
 
-    if (mod === 'Xadrez') {
-      const resA = playersList[0].resultado;
+    if (modality === 'Xadrez') {
+      const resultA = playersList[0].resultado;
       let scoreA = 0.5;
-      if (resA === 'vitoria' || resA === 1) scoreA = 1.0;
-      else if (resA === 'derrota' || resA === 0) scoreA = 0.0;
+      if (resultA === 'vitoria' || resultA === 1) scoreA = 1.0;
+      else if (resultA === 'derrota' || resultA === 0) scoreA = 0.0;
 
-      pA.rating += KA * (scoreA - EA);
-      pB.rating += KB * ((1 - scoreA) - EB);
+      playerA.rating += factorA * (scoreA - expectedA);
+      playerB.rating += factorB * ((1 - scoreA) - expectedB);
       
-      if (scoreA === 1) { pA.vitorias++; }
-      else if (scoreA === 0) { pB.vitorias++; }
+      if (scoreA === 1) { playerA.vitorias++; }
+      else if (scoreA === 0) { playerB.vitorias++; }
 
-      logDetalhesParts.push(`${pA.nome}: ${resA}, ${pB.nome}: ${resA === 'vitoria' ? 'derrota' : (resA === 'derrota' ? 'vitoria' : 'empate')}`);
+      logDetailsParts.push(`${playerA.nome}: ${resultA}, ${playerB.nome}: ${resultA === 'vitoria' ? 'derrota' : (resultA === 'derrota' ? 'vitoria' : 'empate')}`);
     } else {
-      const D = parseInt(playersList[0].pecasOuCartas || 0) - parseInt(playersList[1].pecasOuCartas || 0);
-      const resA = playersList[0].resultado;
-      let SA = 0.5;
-      if (resA === 'vitoria') SA = 1.0;
-      else if (resA === 'derrota') SA = 0.0;
+      const diffPieces = parseInt(playersList[0].pecasOuCartas || 0) - parseInt(playersList[1].pecasOuCartas || 0);
+      const resultA = playersList[0].resultado;
+      let scoreA = 0.5;
+      if (resultA === 'vitoria') scoreA = 1.0;
+      else if (resultA === 'derrota') scoreA = 0.0;
       
-      const M = Math.min(1.0, Math.log(1 + Math.abs(D)) / Math.log(1 + 8));
-      if (resA === 'empate') {
-        SA = D > 0 ? (0.50 + 0.25 * M) : (D < 0 ? (0.50 - 0.25 * M) : 0.5);
+      const marginFactor = Math.min(1.0, Math.log(1 + Math.abs(diffPieces)) / Math.log(1 + 8));
+      if (resultA === 'empate') {
+        scoreA = diffPieces > 0 ? (0.50 + 0.25 * marginFactor) : (diffPieces < 0 ? (0.50 - 0.25 * marginFactor) : 0.5);
       }
 
-      const perfA = SA - EA;
-      const perfB = (1 - SA) - EB;
+      const perfA = scoreA - expectedA;
+      const perfB = (1 - scoreA) - expectedB;
       const bonusPerformance = -(perfA + perfB) / 2;
 
-      pA.rating += KA * (perfA + bonusPerformance);
-      pB.rating += KB * (perfB + bonusPerformance);
+      playerA.rating += factorA * (perfA + bonusPerformance);
+      playerB.rating += factorB * (perfB + bonusPerformance);
 
-      if (resA === 'vitoria') { pA.vitorias++; }
-      else if (resA === 'derrota') { pB.vitorias++; }
+      if (resultA === 'vitoria') { playerA.vitorias++; }
+      else if (resultA === 'derrota') { playerB.vitorias++; }
 
-      logDetalhesParts.push(`Saldo Peças: ${D} | ${pA.nome}: ${resA} (${parseInt(playersList[0].pecasOuCartas || 0)} pçs), ${pB.nome}: ${resA === 'vitoria' ? 'derrota' : 'vitoria'} (${parseInt(playersList[1].pecasOuCartas || 0)} pçs)`);
+      logDetailsParts.push(`Saldo Peças: ${diffPieces} | ${playerA.nome}: ${resultA} (${parseInt(playersList[0].pecasOuCartas || 0)} pçs), ${playerB.nome}: ${resultA === 'vitoria' ? 'derrota' : 'vitoria'} (${parseInt(playersList[1].pecasOuCartas || 0)} pçs)`);
     }
 
-    eloChanges.push(`${pA.nome}: ${oldRatingA} ➔ ${pA.rating}`);
-    eloChanges.push(`${pB.nome}: ${oldRatingB} ➔ ${pB.rating}`);
+    eloChanges.push(`${playerA.nome}: ${oldRatingA} ➔ ${playerA.rating}`);
+    eloChanges.push(`${playerB.nome}: ${oldRatingB} ➔ ${playerB.rating}`);
 
-    pA.partidas++;
-    pB.partidas++;
+    playerA.partidas++;
+    playerB.partidas++;
 
-    rows[pA.rowIndex][2] = pA.rating;
-    rows[pA.rowIndex][3] = pA.vitorias;
-    rows[pA.rowIndex][4] = pA.partidas;
+    rows[playerA.rowIndex][2] = playerA.rating;
+    rows[playerA.rowIndex][3] = playerA.vitorias;
+    rows[playerA.rowIndex][4] = playerA.partidas;
     
-    rows[pB.rowIndex][2] = pB.rating;
-    rows[pB.rowIndex][3] = pB.vitorias;
-    rows[pB.rowIndex][4] = pB.partidas;
+    rows[playerB.rowIndex][2] = playerB.rating;
+    rows[playerB.rowIndex][3] = playerB.vitorias;
+    rows[playerB.rowIndex][4] = playerB.partidas;
 
-  } else if (mod === 'Domino' || mod === 'Uno') {
-    const N = playersList.length;
+  } else if (modality === 'Domino' || modality === 'Uno') {
+    const totalPlayersCount = playersList.length;
 
-    let numEquipes = N;
-    let tamanhoEquipe = 1;
-    if (modoJogo === 'equipe') {
-      const eqSet = new Set(playersList.map(p => p.equipeIndex));
-      numEquipes = eqSet.size;
-      tamanhoEquipe = N / numEquipes;
+    let numTeams = totalPlayersCount;
+    let teamSize = 1;
+    if (gameMode === 'equipe') {
+      const teamSet = new Set(playersList.map(p => p.equipeIndex));
+      numTeams = teamSet.size;
+      teamSize = totalPlayersCount / numTeams;
     }
 
-    const oponentesVirtuais = modoJogo === 'equipe' ? (N - tamanhoEquipe + 1) : N;
+    const virtualOpponents = gameMode === 'equipe' ? (totalPlayersCount - teamSize + 1) : totalPlayersCount;
 
-    let C_max = 108 - (oponentesVirtuais - 1);
-    if (mod === 'Domino') {
-      if (oponentesVirtuais === 2) C_max = 153;
-      else if (oponentesVirtuais === 3) C_max = 118;
-      else C_max = 69;
+    let maxCardsOrPoints = 108 - (virtualOpponents - 1);
+    if (modality === 'Domino') {
+      if (virtualOpponents === 2) maxCardsOrPoints = 153;
+      else if (virtualOpponents === 3) maxCardsOrPoints = 118;
+      else maxCardsOrPoints = 69;
     }
 
-    let totalRestanteMesa = 0;
-    if (modoJogo === 'equipe') {
-      const eqSomas = {};
+    let totalRemainingTable = 0;
+    if (gameMode === 'equipe') {
+      const teamSums = {};
       playersList.forEach(p => {
-        if (eqSomas[p.equipeIndex] === undefined) {
-          eqSomas[p.equipeIndex] = p.resultado === 'vitoria' ? 0 : (parseInt(p.pecasOuCartas) || 0);
+        if (teamSums[p.equipeIndex] === undefined) {
+          teamSums[p.equipeIndex] = p.resultado === 'vitoria' ? 0 : (parseInt(p.pecasOuCartas) || 0);
         }
       });
-      Object.values(eqSomas).forEach(val => totalRestanteMesa += val);
+      Object.values(teamSums).forEach(val => totalRemainingTable += val);
     } else {
       playersList.forEach(p => {
-        if (p.resultado !== 'vitoria') totalRestanteMesa += parseInt(p.pecasOuCartas) || 0;
+        if (p.resultado !== 'vitoria') totalRemainingTable += parseInt(p.pecasOuCartas) || 0;
       });
     }
 
-    const M_mesa = Math.min(1.0, Math.log(1 + totalRestanteMesa) / Math.log(1 + C_max));
-    const S_vencedor = 0.75 + 0.25 * M_mesa;
-    const boloPerdedores = (numEquipes / 2) - S_vencedor;
+    const tableFactor = Math.min(1.0, Math.log(1 + totalRemainingTable) / Math.log(1 + maxCardsOrPoints));
+    const winnerScore = 0.75 + 0.25 * tableFactor;
+    const losersPool = (numTeams / 2) - winnerScore;
 
     playersList.forEach(p => {
       if (p.resultado === 'vitoria') {
-        p.S = S_vencedor;
+        p.S = winnerScore;
       } else if (p.resultado === 'empate') {
         p.S = 0.5;
       } else {
-        if (numEquipes === 2) {
-          p.S = boloPerdedores;
+        if (numTeams === 2) {
+          p.S = losersPool;
         } else {
-          p.S = boloPerdedores * (1 - ((parseInt(p.pecasOuCartas) || 0) / (totalRestanteMesa || 1))) * (1 / (numEquipes - 2));
+          p.S = losersPool * (1 - ((parseInt(p.pecasOuCartas) || 0) / (totalRemainingTable || 1))) * (1 / (numTeams - 2));
         }
       }
     });
 
-    let performancesBrutas = [];
-    let somaPerformances = 0;
+    let rawPerformances = [];
+    let sumPerformances = 0;
 
     playersList.forEach(p => {
       const dbPlayer = playersMap[p.id];
-      let sumE = 0;
+      let sumExpected = 0;
       playersList.forEach(adj => {
         if (adj.id !== p.id) {
-          sumE += 1 / (1 + Math.pow(10, (playersMap[adj.id].rating - dbPlayer.rating) / 400));
+          sumExpected += 1 / (1 + Math.pow(10, (playersMap[adj.id].rating - dbPlayer.rating) / 400));
         }
       });
-      const Ei = sumE / (N - 1);
-      const perfBruta = p.S - Ei;
+      const expectedIndividual = sumExpected / (totalPlayersCount - 1);
+      const rawPerf = p.S - expectedIndividual;
       
-      performancesBrutas.push(perfBruta);
-      somaPerformances += perfBruta;
+      rawPerformances.push(rawPerf);
+      sumPerformances += rawPerf;
     });
 
-    const ajusteSimetriaPerformance = -somaPerformances / N;
-    const labelItem = mod === 'Domino' ? 'Pontinhos restantes' : 'Cartas restantes';
+    const symmetryAdjustment = -sumPerformances / totalPlayersCount;
+    const itemLabel = modality === 'Domino' ? 'Pontinhos restantes' : 'Cartas restantes';
 
     playersList.forEach((p, idx) => {
       const dbPlayer = playersMap[p.id];
       const oldRating = dbPlayer.rating;
-      const Ki = Math.max(16, 160 / Math.sqrt(dbPlayer.partidas + 1));
+      const factorK = Math.max(16, 160 / Math.sqrt(dbPlayer.partidas + 1));
       
-      const deltaEloFinal = Ki * (performancesBrutas[idx] + ajusteSimetriaPerformance);
+      const finalEloDelta = factorK * (rawPerformances[idx] + symmetryAdjustment);
       
-      dbPlayer.rating += deltaEloFinal;
+      dbPlayer.rating += finalEloDelta;
       dbPlayer.partidas++;
 
       if (p.resultado === 'vitoria') {
@@ -242,22 +242,22 @@ function handleRecordMatch(data, usuario) {
       rows[dbPlayer.rowIndex][3] = dbPlayer.vitorias;
       rows[dbPlayer.rowIndex][4] = dbPlayer.partidas;
 
-      const tagEq = modoJogo === 'equipe' ? ` (Eq ${p.equipeIndex + 1})` : '';
-      logDetalhesParts.push(`${dbPlayer.nome}${tagEq}: ${p.resultado}, ${labelItem}: ${p.pecasOuCartas}`);
+      const teamTag = gameMode === 'equipe' ? ` (Eq ${p.equipeIndex + 1})` : '';
+      logDetailsParts.push(`${dbPlayer.nome}${teamTag}: ${p.resultado}, ${itemLabel}: ${p.pecasOuCartas}`);
       eloChanges.push(`${dbPlayer.nome}: ${oldRating} ➔ ${dbPlayer.rating}`);
     });
 
-    logDetalhes = `Mesa de ${N} jogadores (${modoJogo === 'equipe' ? numEquipes + ' equipes' : 'Individual'}). ${logDetalhesParts.join('; ')}`;
+    logDetails = `Mesa de ${totalPlayersCount} jogadores (${gameMode === 'equipe' ? numTeams + ' equipes' : 'Individual'}). ${logDetailsParts.join('; ')}`;
   } else {
-    logDetalhes = `Mesa de ${playersList.length} jogadores. ${logDetalhesParts.join('; ')}`;
+    logDetails = `Mesa de ${playersList.length} jogadores. ${logDetailsParts.join('; ')}`;
   }
 
-  logDetalhes += ` | Elo: [${eloChanges.join('; ')}]`;
+  logDetails += ` | Elo: [${eloChanges.join('; ')}]`;
 
   sheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
 
-  registrarLog(usuario, 'Registro de Partida', mod, nomesEnvolvidos, logDetalhes);
+  registrarLog(user, 'Registro de Partida', modality, involvedNames, logDetails);
 
-  const updatedData = updateModalityCache(mod);
+  const updatedData = updateModalityCache(modality);
   return responseJSON({ status: 'success', data: updatedData });
 }

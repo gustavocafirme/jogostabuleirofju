@@ -7,5 +7,6 @@ const state = {
   dbData: { rankings: {}, backups: {} },
   historyData: {},
   refreshTimeout: null,
-  isFirstLoad: true
+  isFirstLoad: true,
+  isLoading: false
 };

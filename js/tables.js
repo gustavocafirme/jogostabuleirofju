@@ -2,13 +2,19 @@
  * Renderiza a tabela de ranking/classificação ordenada pela pontuação Elo.
  */
 function renderRankingTable() {
+  const tableBody = document.getElementById('rankingTableBody');
+
+  if (state.isLoading) {
+    tableBody.innerHTML = '<tr><td colspan="6" class="loading-text">Carregando...</td></tr>';
+    return;
+  }
+
   const rankingList = (state.dbData.rankings && state.dbData.rankings[state.currentMod]) 
     ? [...state.dbData.rankings[state.currentMod]] 
     : [];
   
   rankingList.sort((a, b) => b.rating - a.rating);
 
-  const tableBody = document.getElementById('rankingTableBody');
   if (rankingList.length === 0) {
     tableBody.innerHTML = '<tr><td colspan="6" class="loading-text">Nenhum jogador cadastrado.</td></tr>';
     return;
@@ -41,11 +47,17 @@ function renderRankingTable() {
  * Renderiza a lista de jogadores arquivados/excluídos na tabela de backup (lixeira).
  */
 function renderBackupTable() {
+  const tableBody = document.getElementById('backupTableBody');
+
+  if (state.isLoading) {
+    tableBody.innerHTML = '<tr><td colspan="7" class="loading-text">Carregando...</td></tr>';
+    return;
+  }
+
   const backupList = (state.dbData.backups && state.dbData.backups[state.currentMod]) 
     ? state.dbData.backups[state.currentMod] 
     : [];
   
-  const tableBody = document.getElementById('backupTableBody');
   if (backupList.length === 0) {
     tableBody.innerHTML = '<tr><td colspan="7" class="loading-text">Nenhum jogador na lixeira.</td></tr>';
     return;

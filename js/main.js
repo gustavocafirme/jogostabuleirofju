@@ -12,6 +12,8 @@ async function loadData() {
   const btnRefresh = document.getElementById('btnRefresh');
   if (btnRefresh) btnRefresh.style.display = 'none';
 
+  state.isLoading = true;
+
   if (state.refreshTimeout) clearTimeout(state.refreshTimeout);
 
   document.getElementById('registrarLoadingTag').classList.remove('hidden');
@@ -53,6 +55,10 @@ async function loadData() {
   } catch (err) {
     console.error("Erro ao carregar dados:", err);
   } finally {
+    state.isLoading = false;
+
+    renderRankingTable();
+    renderBackupTable();
     document.getElementById('rankingLoadingTag').classList.add('hidden');
     document.getElementById('rankingTable').classList.remove('grayed-out-full');
 

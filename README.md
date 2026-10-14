@@ -1,7 +1,7 @@
-![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?logo=javascript&logoColor=%23F7DF1E)
+![JavaScript](https://img.shields.io/badge/JavaScript-%23323330.svg?logo=javascript&logoColor=%23F7DF1E)
 ![Google Apps Script](https://img.shields.io/badge/Google%20Apps%20Script-4285F4?logo=google-apps-script&logoColor=white)
 ![Google Sheets](https://img.shields.io/badge/Google%20Sheets-34A853?logo=google-sheets&logoColor=white)
-![GitHub Pages](https://img.shields.io/badge/github%20pages-%23121011.svg?logo=github&logoColor=white)
+![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-%23121011.svg?logo=github&logoColor=white)
 # Sistema de Gerenciamento de Ranking de Jogos de Tabuleiro (FJU Esportes)
 
 Sistema web completo para gerenciamento de rankings Elo, histórico de partidas, lixeira (backup) e auditoria de ações, desenvolvido com um front-end moderno hospedado no GitHub Pages e um back-end serverless integrado ao Google Apps Script com banco de dados no Google Sheets.

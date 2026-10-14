@@ -229,9 +229,9 @@ button.btn-restore:hover { background: #15803d; }
 
 /* Cores das Equipes (FJU Paleta) */
 .team-bg-0 { background: rgba(38, 120, 235, 0.15); border-color: rgba(38, 120, 235, 0.4); }   /* Azul */
-.team-bg-1 { background: rgba(219, 31, 43, 0.15); border-color: rgba(219, 31, 43, 0.4); }    /* Vermelho */
+.team-bg-1 { background: rgba(219, 31, 43, 0.15); border-color: rgba(219, 31, 43, 0.4); }     /* Vermelho */
 .team-bg-2 { background: rgba(22, 163, 22, 0.15); border-color: rgba(22, 163, 22, 0.4); }     /* Verde */
-.team-bg-3 { background: rgba(235, 175, 23, 0.15); border-color: rgba(235, 175, 23, 0.4); }  /* Amarelo */
+.team-bg-3 { background: rgba(235, 175, 23, 0.15); border-color: rgba(235, 175, 23, 0.4); }   /* Amarelo */
 .team-bg-4 { background: rgba(144, 153, 184, 0.15); border-color: rgba(144, 153, 184, 0.4); } /* Prata */
 
 /* Responsividade e Scrollbar Horizontal para Tabelas em Telas Pequenas */
@@ -253,53 +253,11 @@ button.btn-restore:hover { background: #15803d; }
   text-align: center;
 }
 
-/* Caixa com limite de altura (aprox. 4 linhas) e scroll vertical para o Histórico */
-.history-scroll-box {
-  max-height: 5.8em;
-  overflow-y: auto;
-  white-space: normal;
-  word-break: break-word;
-  padding-right: 4px;
-}
-
-/* Configuração de larguras e quebra de linha natural para a tabela de Histórico (sem scroll box) */
-#sec-historico table {
-  table-layout: fixed;
-  width: 100%;
-  min-width: 550px; /* Garante o limite mínimo antes de ativar o scroll horizontal geral da seção */
-}
-
-#sec-historico th, #sec-historico td {
-  white-space: normal;
-  word-break: break-word;
-  vertical-align: top; /* Alinha o conteúdo no topo para ficar limpo quando as linhas crescerem */
-}
-
-#sec-historico th:nth-child(1), #sec-historico td:nth-child(1) {
-  width: 75px;
-} /* Data/Hora */
-
-#sec-historico th:nth-child(2), #sec-historico td:nth-child(2) {
-  width: 80px;
-} /* Usuário */
-
-#sec-historico th:nth-child(3), #sec-historico td:nth-child(3) {
-  width: 55px;
-} /* Ação */
-
-#sec-historico th:nth-child(4), #sec-historico td:nth-child(4) {
-  width: 30%;
-} /* Envolvidos */
-
-#sec-historico th:nth-child(5), #sec-historico td:nth-child(5) {
-  width: 70%; /* Detalhes (Absorve todo o restante do espaço fluidamente) */
-}
-
 /* Configuração de larguras fixas e proporcionais para a tabela de Ranking */
 #sec-ranking table {
   table-layout: fixed;
   width: 100%;
-  min-width: 470px;
+  min-width: 470px; /* Garante o limite mínimo antes de ativar o scroll horizontal geral da seção */
 }
 
 #sec-ranking th:nth-child(1), #sec-ranking td:nth-child(1) {
@@ -307,7 +265,7 @@ button.btn-restore:hover { background: #15803d; }
 }
 
 #sec-ranking th:nth-child(2), #sec-ranking td:nth-child(2) {
-  width: 43%; /* Nome (Absorve dinamicamente o espaço restante) */
+  width: 43%; /* Nome */
   white-space: normal;
 }
 
@@ -327,6 +285,47 @@ button.btn-restore:hover { background: #15803d; }
 #sec-ranking th:nth-child(6), #sec-ranking td:nth-child(6) {
   width: 75px; /* Ações (Botão Excluir) */
 }
+
+/* Configuração de larguras fixas e proporcionais para a tabela de Jogadores Excluídos (Backup) */
+#sec-backup table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 600px; /* Garante o limite mínimo antes de ativar o scroll horizontal geral da seção */
+}
+
+#sec-backup th, #sec-backup td {
+  white-space: normal;
+  word-break: break-word;
+  vertical-align: top; /* Alinha o conteúdo no topo para ficar limpo quando as linhas crescerem */
+}
+
+/* Configuração de larguras fixas e proporcionais para a tabela de Jogadores Excluídos (Backup) */
+#sec-backup th:nth-child(1), #sec-backup td:nth-child(1) { width: 29%; } /* Nome */
+#sec-backup th:nth-child(2), #sec-backup td:nth-child(2) { width: 18%; } /* Pontuação */
+#sec-backup th:nth-child(3), #sec-backup td:nth-child(3) { width: 14%; } /* Vitórias */
+#sec-backup th:nth-child(4), #sec-backup td:nth-child(4) { width: 14%; } /* Partidas */
+#sec-backup th:nth-child(5), #sec-backup td:nth-child(5) { width: 74px; } /* Data/Hora (Data de Exclusão) */
+#sec-backup th:nth-child(6), #sec-backup td:nth-child(6) { width: 25%; } /* Excluído Por */
+#sec-backup th:nth-child(7), #sec-backup td:nth-child(7) { width: 95px; } /* Ações */
+
+/* Configuração de larguras e quebra de linha natural para a tabela de Histórico (sem scroll box) */
+#sec-historico table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 550px; /* Garante o limite mínimo antes de ativar o scroll horizontal geral da seção */
+}
+
+#sec-historico th, #sec-historico td {
+  white-space: normal;
+  word-break: break-word;
+  vertical-align: top; /* Alinha o conteúdo no topo para ficar limpo quando as linhas crescerem */
+}
+
+#sec-historico th:nth-child(1), #sec-historico td:nth-child(1) { width: 74px; } /* Data/Hora */
+#sec-historico th:nth-child(2), #sec-historico td:nth-child(2) { width: 22%; } /* Usuário */
+#sec-historico th:nth-child(3), #sec-historico td:nth-child(3) { width: 55px; } /* Ação */
+#sec-historico th:nth-child(4), #sec-historico td:nth-child(4) { width: 27%; } /* Envolvidos */
+#sec-historico th:nth-child(5), #sec-historico td:nth-child(5) { width: 51%; } /* Detalhes */
 
 /* Linhas com cores de fundo alternadas (efeito zebrado suave) para Ranking e Histórico */
 #sec-ranking tbody tr:nth-child(even),

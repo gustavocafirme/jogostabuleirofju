@@ -53,6 +53,22 @@ function handleRestorePlayer(modality, playerId, user) {
   return responseJSON({ status: 'error', message: 'Jogador não encontrado no backup' });
 }
 
+function processRecordMatch(e) {
+  Logger.log("=== INÍCIO PROCESS RECORD MATCH ===");
+  Logger.log("Payload recebido: " + JSON.stringify(e));
+  
+  try {
+    // seu código atual de cálculo de Elo e salvamento na planilha...
+  } catch (err) {
+    Logger.log("ERRO CAPTURADO NO APPS SCRIPT: " + err.toString());
+    Logger.log("Stack trace: " + err.stack);
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'error',
+      message: "Erro no Apps Script: " + err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 function handleRecordMatch(payloadData, user) {
   const modality = payloadData.modalidade;
   const gameMode = payloadData.modoJogo || 'individual';
@@ -81,6 +97,7 @@ function handleRecordMatch(payloadData, user) {
   let involvedNames = playersList.map(p => playersMap[p.id] ? playersMap[p.id].nome : 'Desconhecido').join(', ');
   let logDetailsParts = [];
   let eloChanges = [];
+  let logDetails = '';
 
   if (modality === 'Xadrez' || modality === 'Damas') {
     if (playersList.length !== 2) {
@@ -149,6 +166,8 @@ function handleRecordMatch(payloadData, user) {
     rows[playerB.rowIndex][2] = playerB.rating;
     rows[playerB.rowIndex][3] = playerB.vitorias;
     rows[playerB.rowIndex][4] = playerB.partidas;
+
+    logDetails = `${modality} (Individual). ${logDetailsParts.join('; ')}`;
 
   } else if (modality === 'Domino' || modality === 'Uno') {
     const totalPlayersCount = playersList.length;

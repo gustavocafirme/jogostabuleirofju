@@ -1,3 +1,6 @@
+// Variável de controle para o timer do pop-up
+let notificationTimeout = null;
+
 /**
  * Inicializador da janela: verifica se há uma sessão ativa armazenada.
  */
@@ -149,6 +152,7 @@ async function addPlayer() {
 
     nomeInput.value = '';
     await loadData();
+    showNotification(`Jogador ${nome} adicionado com sucesso!`);
   } catch (err) {
     console.error("Erro ao adicionar jogador:", err);
     alert("Ocorreu um erro ao salvar o jogador.");
@@ -166,6 +170,11 @@ async function addPlayer() {
 async function deletePlayer(playerId, btnEl) {
   if (!confirm("Tem certeza que deseja mover este jogador para o backup?")) return;
 
+  // Captura o nome do jogador localmente antes da requisição
+  const currentPlayers = state.dbData?.rankings?.[state.currentMod] || [];
+  const playerObj = currentPlayers.find(p => p.id === playerId);
+  const playerName = playerObj ? playerObj.nome : "jogador";
+
   if (btnEl) {
     btnEl.disabled = true;
     btnEl.classList.add('form-disabled');
@@ -176,6 +185,7 @@ async function deletePlayer(playerId, btnEl) {
     if (data.status === 'error') return alert(data.message);
 
     await loadData();
+    showNotification(`Jogador ${playerName} excluído com sucesso!`);
   } catch (err) {
     console.error("Erro ao excluir jogador:", err);
     alert("Ocorreu um erro ao mover o jogador.");
@@ -191,6 +201,13 @@ async function deletePlayer(playerId, btnEl) {
  * Envia a requisição para restaurar um jogador da lixeira de volta ao ranking ativo.
  */
 async function restorePlayer(playerId, btnEl) {
+  if (!confirm("Tem certeza que deseja restaurar este jogador para o ranking?")) return;
+
+  // Captura o nome do jogador no backup localmente antes da requisição
+  const currentBackups = state.dbData?.backups?.[state.currentMod] || [];
+  const playerObj = currentBackups.find(p => p.id === playerId);
+  const playerName = playerObj ? playerObj.nome : "jogador";
+
   if (btnEl) {
     btnEl.disabled = true;
     btnEl.classList.add('form-disabled');
@@ -201,6 +218,7 @@ async function restorePlayer(playerId, btnEl) {
     if (data.status === 'error') return alert(data.message);
 
     await loadData();
+    showNotification(`Jogador ${playerName} restaurado com sucesso!`);
   } catch (err) {
     console.error("Erro ao restaurar jogador:", err);
     alert("Ocorreu um erro ao restaurar o jogador.");
@@ -220,9 +238,10 @@ async function submitMatch() {
 
   let jogadoresArr = [];
   let empatesCount = 0;
+  const formContainer = document.getElementById('matchForm');
 
   if (state.modoJogo === 'equipe' && (state.currentMod === 'Domino' || state.currentMod === 'Uno')) {
-    const teamContainers = document.querySelectorAll('.team-container');
+    const teamContainers = formContainer.querySelectorAll('.team-container');
     
     teamContainers.forEach((container, eqIdx) => {
       const resVal = container.querySelector('.mTeamResultado').value;
@@ -243,9 +262,9 @@ async function submitMatch() {
     });
 
   } else {
-    const pSelects = document.querySelectorAll('.mPlayer');
-    const pResultados = document.querySelectorAll('.mResultado');
-    const pPecasCartas = document.querySelectorAll('.mPecasCartas');
+    const pSelects = formContainer.querySelectorAll('.mPlayer');
+    const pResultados = formContainer.querySelectorAll('.mResultado');
+    const pPecasCartas = formContainer.querySelectorAll('.mPecasCartas');
 
     pSelects.forEach((sel, i) => {
       const resVal = pResultados[i].value;
@@ -267,6 +286,17 @@ async function submitMatch() {
     return alert("Xadrez e Damas exigem exatamente 2 jogadores.");
   }
 
+  // === DEBUG FRONT-END ===
+  const payloadParaEnviar = {
+    action: 'recordMatch',
+    modalidade: state.currentMod,
+    modoJogo: state.modoJogo,
+    token: state.currentSessionToken,
+    jogadores: jogadoresArr
+  };
+  console.log("📤 [DEBUG FRONT-END] Enviando payload para o Apps Script:", payloadParaEnviar);
+  // =======================
+
   const matchSection = document.getElementById('sec-registrar');
   const submitBtn = document.getElementById('btnSubmitMatch');
   const originalBtnText = submitBtn.innerText;
@@ -276,13 +306,11 @@ async function submitMatch() {
   submitBtn.disabled = true;
 
   try {
-    const resData = await postAction({
-      action: 'recordMatch',
-      modalidade: state.currentMod,
-      modoJogo: state.modoJogo,
-      token: state.currentSessionToken,
-      jogadores: jogadoresArr
-    });
+    const resData = await postAction(payloadParaEnviar);
+    
+    // === DEBUG RESPOSTA API ===
+    console.log("📥 [DEBUG FRONT-END] Resposta recebida da API:", resData);
+    // ==========================
 
     if (resData.status === 'error') {
       alert("Erro ao registrar: " + resData.message);
@@ -303,10 +331,28 @@ async function submitMatch() {
 
     renderRankingTable();
     renderBackupTable();
-    renderMatchForm();
+    
+    const rankingsMod = state.dbData?.rankings?.[state.currentMod] || [];
+    const nomesEnvolvidosArr = jogadoresArr.map(j => {
+      const pObj = rankingsMod.find(p => p.id === j.id);
+      return pObj ? pObj.nome : 'Jogador';
+    });
+    
+    const unicosNomes = [...new Set(nomesEnvolvidosArr)];
 
+    let joinedNames = '';
+    if (unicosNomes.length === 2) {
+      joinedNames = `${unicosNomes[0]} e ${unicosNomes[1]}`;
+    } else if (unicosNomes.length > 2) {
+      const last = unicosNomes.pop();
+      joinedNames = `${unicosNomes.join(', ')} e ${last}`;
+    } else {
+      joinedNames = unicosNomes[0] || 'participantes';
+    }
+
+    showNotification(`Partida entre jogadores ${joinedNames} registrada com sucesso!`);
   } catch (err) {
-    console.error("Erro ao registrar partida:", err);
+    console.error("❌ [DEBUG FRONT-END] Erro crítico na requisição:", err);
     alert("Ocorreu um erro ao salvar a partida.");
   } finally {
     matchSection.classList.remove('form-disabled');
@@ -320,4 +366,41 @@ async function submitMatch() {
  */
 function handleEnter(e) {
   if (e.key === 'Enter') login();
+}
+
+/**
+ * Exibe o pop-up de notificação no topo da tela por até 5 segundos.
+ */
+function showNotification(message) {
+  const popup = document.getElementById('systemNotificationPopup');
+  const textEl = document.getElementById('notificationText');
+  if (!popup || !textEl) return;
+
+  textEl.innerText = message;
+  popup.classList.remove('hidden');
+  
+  // Força o reflow para garantir a animação
+  void popup.offsetWidth;
+  popup.classList.add('show');
+
+  if (notificationTimeout) clearTimeout(notificationTimeout);
+
+  notificationTimeout = setTimeout(() => {
+    hideNotification();
+  }, 5000);
+}
+
+/**
+ * Esconde o pop-up de notificação imediatamente ao ser clicado ou após o timeout.
+ */
+function hideNotification() {
+  const popup = document.getElementById('systemNotificationPopup');
+  if (!popup) return;
+
+  popup.classList.remove('show');
+  if (notificationTimeout) clearTimeout(notificationTimeout);
+  
+  setTimeout(() => {
+    popup.classList.add('hidden');
+  }, 400); // Aguarda o fim da transição CSS
 }

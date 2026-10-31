@@ -182,7 +182,6 @@ function renderIndividualTable(container, players) {
   if (playerLimit > maxAllowed) { playerLimit = maxAllowed; if (countInput) countInput.value = playerLimit; }
   if (playerLimit < 2) { playerLimit = 2; if (countInput) countInput.value = playerLimit; }
 
-  // Captura estado atual preenchido pelo usuário para preservar ao redimensionar
   const existingCards = container.querySelectorAll('.player-card');
   const savedData = [];
   existingCards.forEach((card) => {
@@ -196,7 +195,6 @@ function renderIndividualTable(container, players) {
     });
   });
 
-  // Valida se o conjunto de resultados faz sentido (se só tem derrotas ou empates sem vitória)
   let vitoriasCount = 0;
   for (let i = 0; i < playerLimit; i++) {
     if (savedData[i] && savedData[i].resultado === 'vitoria') vitoriasCount++;
@@ -208,8 +206,17 @@ function renderIndividualTable(container, players) {
   let htmlContent = '';
   for (let i = 0; i < playerLimit; i++) {
     let currentSaved = savedData[i] || {};
-    let selectedPlayerId = currentSaved.playerId || players[i % players.length]?.id || '';
-    let options = players.map(p => `<option value="${p.id}" ${p.id === selectedPlayerId ? 'selected' : ''}>${p.nome} (${Math.round(p.rating)})</option>`).join('');
+    
+    let defaultPlayerId = '';
+    if (currentSaved.playerId) {
+      defaultPlayerId = currentSaved.playerId;
+    } else if (players.length >= 2) {
+      defaultPlayerId = players[i % players.length]?.id || '';
+    } else {
+      defaultPlayerId = players[0]?.id || '';
+    }
+
+    let options = players.map(p => `<option value="${p.id}" ${p.id === defaultPlayerId ? 'selected' : ''}>${p.nome} (${Math.round(p.rating)})</option>`).join('');
 
     let defaultRes = currentSaved.resultado || (i === 0 ? 'vitoria' : 'derrota');
     let resOptions = state.currentMod === 'Uno' 
@@ -257,7 +264,6 @@ function renderTeamTable(container, players) {
   const numTeams = countInput ? parseInt(countInput.value) || 2 : 2;
   const totalPlayers = teamSize * numTeams;
 
-  // Captura estado atual das equipes para preservar ao alterar quantidade
   const existingTeams = container.querySelectorAll('.team-container');
   const savedTeams = [];
   existingTeams.forEach((teamEl) => {
@@ -334,10 +340,11 @@ function renderTeamTable(container, players) {
 }
 
 /**
- * Sincroniza automaticamente os resultados das equipes (ex: Vitória em uma marca Derrota na outra).
+ * Sincroniza automaticamente os resultados das equipes.
  */
 function handleTeamResultChange(changedTeamIdx) {
-  const teamResultSelects = document.querySelectorAll('.mTeamResultado');
+  const formContainer = document.getElementById('matchForm');
+  const teamResultSelects = formContainer ? formContainer.querySelectorAll('.mTeamResultado') : document.querySelectorAll('.mTeamResultado');
   const teamCount = teamResultSelects.length;
   const newValue = teamResultSelects[changedTeamIdx].value;
 
@@ -368,7 +375,8 @@ function handleTeamResultChange(changedTeamIdx) {
  * Ajusta os limites de entradas de cartas ou pontinhos para o modo em equipe.
  */
 function adjustTeamPieceCardLimits(teamIdx) {
-  const teamContainer = document.querySelector(`.team-container[data-team-index="${teamIdx}"]`);
+  const formContainer = document.getElementById('matchForm');
+  const teamContainer = formContainer ? formContainer.querySelector(`.team-container[data-team-index="${teamIdx}"]`) : document.querySelector(`.team-container[data-team-index="${teamIdx}"]`);
   if (!teamContainer) return;
 
   const resultSelect = teamContainer.querySelector('.mTeamResultado');
@@ -400,7 +408,8 @@ function adjustTeamPieceCardLimits(teamIdx) {
  * Sincroniza automaticamente os resultados dos jogadores no modo individual.
  */
 function handleResultChange(changedIndex) {
-  const resultSelects = document.querySelectorAll('.mResultado');
+  const formContainer = document.getElementById('matchForm');
+  const resultSelects = formContainer ? formContainer.querySelectorAll('.mResultado') : document.querySelectorAll('.mResultado');
   const playerCount = resultSelects.length;
   const newValue = resultSelects[changedIndex].value;
 
@@ -432,7 +441,8 @@ function handleResultChange(changedIndex) {
  * Ajusta os limites de entradas de cartas ou pontinhos no modo individual.
  */
 function adjustPieceCardLimits(index) {
-  const cards = document.querySelectorAll('.player-card');
+  const formContainer = document.getElementById('matchForm');
+  const cards = formContainer ? formContainer.querySelectorAll('.player-card') : document.querySelectorAll('.player-card');
   if (!cards[index]) return;
   
   const resultSelect = cards[index].querySelector('.mResultado');
@@ -468,10 +478,10 @@ function adjustPieceCardLimits(index) {
  * Valida os seletores de jogador para evitar seleção duplicada do mesmo jogador na mesma mesa.
  */
 function validatePlayerSelection() {
-  const playerSelects = document.querySelectorAll('.mPlayer');
+  const formContainer = document.getElementById('matchForm');
+  const playerSelects = formContainer ? formContainer.querySelectorAll('.mPlayer') : document.querySelectorAll('.mPlayer');
   const idCounts = {};
 
-  // Conta quantas vezes cada ID de jogador foi selecionado na mesa
   playerSelects.forEach(select => {
     const id = select.value;
     if (id) {
@@ -481,7 +491,6 @@ function validatePlayerSelection() {
 
   let hasDuplicate = false;
 
-  // Aplica o destaque vermelho em todos os selects cujo ID apareça mais de uma vez
   playerSelects.forEach(select => {
     const id = select.value;
     if (id && idCounts[id] > 1) {

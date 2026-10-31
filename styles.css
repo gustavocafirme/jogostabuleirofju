@@ -338,3 +338,28 @@ button.btn-restore:hover { background: #15803d; }
 #sec-historico tbody tr:hover {
   background-color: rgba(17, 42, 94, 0.5);
 }
+
+/* Estilização do Pop-up de Notificação do Sistema */
+.notification-popup {
+  position: fixed;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--success);
+  color: #fff;
+  padding: 14px 24px;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  font-weight: 600;
+  font-size: 0.95rem;
+  z-index: 9999;
+  cursor: pointer;
+  text-align: center;
+  transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  max-width: 90%;
+  box-sizing: border-box;
+}
+
+.notification-popup.show {
+  top: 20px;
+}

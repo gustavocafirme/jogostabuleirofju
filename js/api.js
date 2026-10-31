@@ -11,8 +11,6 @@ async function fetchHistoryData(token) {
 }
 
 async function postAction(payload) {
-  console.log("📤 [DEBUG api.js] Enviando payload:", payload);
-  
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -22,12 +20,10 @@ async function postAction(payload) {
   });
 
   const rawText = await res.text();
-  console.log("📥 [DEBUG api.js] Resposta bruta recebida do Apps Script:", rawText);
-
   try {
     return JSON.parse(rawText);
   } catch (e) {
-    console.error("❌ [DEBUG api.js] O Apps Script retornou uma resposta que não é JSON válido (geralmente erro 500 em HTML):", rawText);
-    throw new Error("Erro no servidor do Apps Script (verifique o console para ver o HTML do erro).");
+    console.error("Erro no retorno do servidor:", rawText);
+    throw new Error("Erro no servidor do Apps Script.");
   }
 }

@@ -87,6 +87,11 @@ async function loadData() {
  * Alterna a modalidade de jogo ativa (Xadrez, Damas, Dominó, Uno).
  */
 function switchMod(mod) {
+  // Salva o estado da modalidade ATUAL antes de trocar de aba
+  if (typeof saveCurrentFormState === 'function') {
+    saveCurrentFormState();
+  }
+  
   state.currentMod = mod;
   state.modoJogo = 'individual';
   
@@ -286,17 +291,6 @@ async function submitMatch() {
     return alert("Xadrez e Damas exigem exatamente 2 jogadores.");
   }
 
-  // === DEBUG FRONT-END ===
-  const payloadParaEnviar = {
-    action: 'recordMatch',
-    modalidade: state.currentMod,
-    modoJogo: state.modoJogo,
-    token: state.currentSessionToken,
-    jogadores: jogadoresArr
-  };
-  console.log("📤 [DEBUG FRONT-END] Enviando payload para o Apps Script:", payloadParaEnviar);
-  // =======================
-
   const matchSection = document.getElementById('sec-registrar');
   const submitBtn = document.getElementById('btnSubmitMatch');
   const originalBtnText = submitBtn.innerText;
@@ -306,11 +300,13 @@ async function submitMatch() {
   submitBtn.disabled = true;
 
   try {
-    const resData = await postAction(payloadParaEnviar);
-    
-    // === DEBUG RESPOSTA API ===
-    console.log("📥 [DEBUG FRONT-END] Resposta recebida da API:", resData);
-    // ==========================
+    const resData = await postAction({
+      action: 'recordMatch',
+      modalidade: state.currentMod,
+      modoJogo: state.modoJogo,
+      token: state.currentSessionToken,
+      jogadores: jogadoresArr
+    });
 
     if (resData.status === 'error') {
       alert("Erro ao registrar: " + resData.message);
@@ -351,8 +347,9 @@ async function submitMatch() {
     }
 
     showNotification(`Partida entre jogadores ${joinedNames} registrada com sucesso!`);
+    renderMatchForm();
   } catch (err) {
-    console.error("❌ [DEBUG FRONT-END] Erro crítico na requisição:", err);
+    console.error("Erro ao registrar partida:", err);
     alert("Ocorreu um erro ao salvar a partida.");
   } finally {
     matchSection.classList.remove('form-disabled');

@@ -1,16 +1,72 @@
 /**
+ * Cache isolado por modalidade e modo de jogo para persistência de estado.
+ */
+if (typeof window.matchFormCache === 'undefined') {
+  window.matchFormCache = {};
+}
+
+function getCurrentFormCacheKey() {
+  return `${state.currentMod}_${state.modoJogo}`;
+}
+
+function saveCurrentFormState() {
+  const formContainer = document.getElementById('matchForm');
+  if (!formContainer) return;
+
+  const key = getCurrentFormCacheKey();
+  const stateData = {
+    modoJogo: state.modoJogo,
+    qtdMesa: document.getElementById('qtdMesa')?.value,
+    tamanhoGrupo: document.getElementById('tamanhoGrupo')?.value,
+    qtdEquipes: document.getElementById('qtdEquipes')?.value,
+    individualCards: [],
+    teamCards: []
+  };
+
+  const currentCards = formContainer.querySelectorAll('.player-card');
+  currentCards.forEach((card) => {
+    const selPlayer = card.querySelector('.mPlayer');
+    const selRes = card.querySelector('.mResultado');
+    const inpPecas = card.querySelector('.mPecasCartas');
+    stateData.individualCards.push({
+      playerId: selPlayer ? selPlayer.value : '',
+      resultado: selRes ? selRes.value : '',
+      pecasCartas: inpPecas ? inpPecas.value : ''
+    });
+  });
+
+  const currentTeams = formContainer.querySelectorAll('.team-container');
+  currentTeams.forEach((teamEl) => {
+    const selRes = teamEl.querySelector('.mTeamResultado');
+    const inpPecas = teamEl.querySelector('.mTeamPecasCartas');
+    const pSelects = teamEl.querySelectorAll('.mPlayer');
+    const pIds = Array.from(pSelects).map(s => s.value);
+    stateData.teamCards.push({
+      resultado: selRes ? selRes.value : '',
+      pecasCartas: inpPecas ? inpPecas.value : '',
+      playerIds: pIds
+    });
+  });
+
+  window.matchFormCache[key] = stateData;
+}
+
+/**
  * Roteador principal do container do formulário de partidas.
- * Valida os requisitos mínimos de jogadores para os modos individual e em equipe.
  */
 function renderMatchForm() {
+  const formContainer = document.getElementById('matchForm');
+  if (!formContainer) return;
+
+  const key = getCurrentFormCacheKey();
+  const cachedData = window.matchFormCache[key] || {};
+
   const players = (state.dbData.rankings && state.dbData.rankings[state.currentMod]) 
     ? [...state.dbData.rankings[state.currentMod]] 
     : [];
   
-  // Ordena os jogadores alfabeticamente para os seletores
   players.sort((a, b) => a.nome.localeCompare(b.nome));
 
-  const formContainer = document.getElementById('matchForm');
   const submitBtn = document.getElementById('btnSubmitMatch');
   
   if (players.length < 2) {
@@ -51,48 +107,66 @@ function renderMatchForm() {
   }
 
   if (state.modoJogo === 'equipe' && (state.currentMod === 'Domino' || state.currentMod === 'Uno')) {
-    htmlContent += buildTeamFormHTML(players);
+    htmlContent += buildTeamFormHTML(players, cachedData);
   } else {
-    htmlContent += buildIndividualFormHTML(players);
+    htmlContent += buildIndividualFormHTML(players, cachedData);
   }
 
   formContainer.innerHTML = htmlContent;
+
+  // Restaura controles globais do cache específico desta modalidade
+  if (cachedData.tamanhoGrupo) {
+    const tgEl = document.getElementById('tamanhoGrupo');
+    if (tgEl) tgEl.value = cachedData.tamanhoGrupo;
+  }
+
+  if (state.modoJogo === 'equipe' && state.currentMod === 'Uno') {
+    updateTeamCountOptions();
+    if (cachedData.qtdEquipes) {
+      const qeEl = document.getElementById('qtdEquipes');
+      if (qeEl) qeEl.value = cachedData.qtdEquipes;
+    }
+  }
+
+  if (cachedData.qtdMesa) {
+    const qmEl = document.getElementById('qtdMesa');
+    if (qmEl) qmEl.value = cachedData.qtdMesa;
+  }
+
   updateDynamicPlayersForm();
 }
 
 /**
- * Alterna a aba de modo de jogo entre 'individual' e 'equipe' e atualiza o formulário.
+ * Alterna a aba de modo de jogo entre 'individual' e 'equipe'.
  */
 function setGameMode(mode) {
+  saveCurrentFormState();
   state.modoJogo = mode;
+  if (!window.modModes) window.modModes = {};
+  window.modModes[state.currentMod] = mode;
   renderMatchForm();
 }
 
-/**
- * Constrói a estrutura HTML dos controles de seleção para o modo individual.
- */
-function buildIndividualFormHTML(players) {
+function buildIndividualFormHTML(players, cachedData = {}) {
   if (state.currentMod === 'Xadrez' || state.currentMod === 'Damas') {
     return `<input type="hidden" id="qtdMesa" value="2"><div id="dynamicPlayersContainer"></div>`;
   } else {
     const maxPlayers = state.currentMod === 'Domino' ? Math.min(4, players.length) : Math.min(10, players.length);
-    let defaultCount = Math.min(state.currentMod === 'Domino' ? 4 : 2, maxPlayers);
+    let defaultCount = cachedData.qtdMesa ? parseInt(cachedData.qtdMesa) : Math.min(state.currentMod === 'Domino' ? 4 : 2, maxPlayers);
     if (defaultCount < 2) defaultCount = 2;
+    if (defaultCount > maxPlayers) defaultCount = maxPlayers;
 
     return `
       <div id="qtdMesaContainer">
         <label>Quantidade de Jogadores na Mesa (Máx: ${maxPlayers}):</label>
-        <input type="number" id="qtdMesa" value="${defaultCount}" min="2" max="${maxPlayers}" onchange="updateDynamicPlayersForm()">
+        <input type="number" id="qtdMesa" value="${defaultCount}" min="2" max="${maxPlayers}" onchange="saveCurrentFormState(); updateDynamicPlayersForm()">
       </div>
       <div id="dynamicPlayersContainer"></div>
     `;
   }
 }
 
-/**
- * Constrói a estrutura HTML dos controles para o modo em equipes.
- */
-function buildTeamFormHTML(players) {
+function buildTeamFormHTML(players, cachedData = {}) {
   if (state.currentMod === 'Domino') {
     return `
       <input type="hidden" id="tamanhoGrupo" value="2">
@@ -101,21 +175,22 @@ function buildTeamFormHTML(players) {
     `;
   } else {
     const maxP = players.length;
+    let savedSize = cachedData.tamanhoGrupo || '2';
     let sizeOptions = [];
-    if (maxP >= 4) sizeOptions.push('<option value="2" selected>Duplas (2 por equipe)</option>');
-    if (maxP >= 6) sizeOptions.push('<option value="3">Trios (3 por equipe)</option>');
-    if (maxP >= 8) sizeOptions.push('<option value="4">Quartetos (4 por equipe)</option>');
-    if (maxP >= 10) sizeOptions.push('<option value="5">Quintetos (5 por equipe)</option>');
+    if (maxP >= 4) sizeOptions.push(`<option value="2" ${savedSize === '2' ? 'selected' : ''}>Duplas (2 por equipe)</option>`);
+    if (maxP >= 6) sizeOptions.push(`<option value="3" ${savedSize === '3' ? 'selected' : ''}>Trios (3 por equipe)</option>`);
+    if (maxP >= 8) sizeOptions.push(`<option value="4" ${savedSize === '4' ? 'selected' : ''}>Quartetos (4 por equipe)</option>`);
+    if (maxP >= 10) sizeOptions.push(`<option value="5" ${savedSize === '5' ? 'selected' : ''}>Quintetos (5 por equipe)</option>`);
 
     return `
       <div style="display:flex; gap:12px; flex-wrap:wrap;">
         <div style="flex:1; min-width:180px;">
           <label>Tamanho da Equipe:</label>
-          <select id="tamanhoGrupo" onchange="updateTeamCountOptions()">${sizeOptions.join('')}</select>
+          <select id="tamanhoGrupo" onchange="saveCurrentFormState(); updateTeamCountOptions()">${sizeOptions.join('')}</select>
         </div>
         <div style="flex:1; min-width:180px;">
           <label>Quantidade de Equipes:</label>
-          <select id="qtdEquipes" onchange="updateDynamicPlayersForm()"></select>
+          <select id="qtdEquipes" onchange="saveCurrentFormState(); updateDynamicPlayersForm()"></select>
         </div>
       </div>
       <div id="dynamicPlayersContainer"></div>
@@ -123,9 +198,6 @@ function buildTeamFormHTML(players) {
   }
 }
 
-/**
- * Atualiza o dropdown de quantidade de equipes de acordo com o tamanho do grupo e jogadores disponíveis.
- */
 function updateTeamCountOptions() {
   const sizeSelect = document.getElementById('tamanhoGrupo');
   const countSelect = document.getElementById('qtdEquipes');
@@ -136,20 +208,24 @@ function updateTeamCountOptions() {
   const maxPossibleTeams = Math.floor(players.length / teamSize);
   const maxLimit = Math.min(5, maxPossibleTeams);
 
+  const key = getCurrentFormCacheKey();
+  const cachedData = window.matchFormCache[key] || {};
+  const savedEquipes = cachedData.qtdEquipes || '2';
+
   let optionsHtml = [];
   for (let i = 2; i <= maxLimit; i++) {
-    optionsHtml.push(`<option value="${i}">${i} Equipes</option>`);
+    optionsHtml.push(`<option value="${i}" ${i.toString() === savedEquipes.toString() ? 'selected' : ''}>${i} Equipes</option>`);
   }
   countSelect.innerHTML = optionsHtml.join('');
   updateDynamicPlayersForm();
 }
 
-/**
- * Atualiza dinamicamente a exibição dos cards de jogadores preservando estado pré-existente.
- */
 function updateDynamicPlayersForm() {
   const container = document.getElementById('dynamicPlayersContainer');
   if (!container) return;
+
+  const key = getCurrentFormCacheKey();
+  const cachedData = window.matchFormCache[key] || {};
 
   const players = (state.dbData.rankings && state.dbData.rankings[state.currentMod]) 
     ? [...state.dbData.rankings[state.currentMod]] 
@@ -165,35 +241,19 @@ function updateDynamicPlayersForm() {
         return;
       }
     }
-    renderTeamTable(container, players);
+    renderTeamTable(container, players, cachedData.teamCards || []);
   } else {
-    renderIndividualTable(container, players);
+    renderIndividualTable(container, players, cachedData.individualCards || []);
   }
 }
 
-/**
- * Renderiza os cards individuais preservando dados preenchidos anteriormente.
- */
-function renderIndividualTable(container, players) {
+function renderIndividualTable(container, players, savedData = []) {
   const countInput = document.getElementById('qtdMesa');
   let playerLimit = countInput ? parseInt(countInput.value) || 2 : 2;
   let maxAllowed = (state.currentMod === 'Domino') ? Math.min(4, players.length) : (state.currentMod === 'Uno' ? Math.min(10, players.length) : 2);
 
   if (playerLimit > maxAllowed) { playerLimit = maxAllowed; if (countInput) countInput.value = playerLimit; }
   if (playerLimit < 2) { playerLimit = 2; if (countInput) countInput.value = playerLimit; }
-
-  const existingCards = container.querySelectorAll('.player-card');
-  const savedData = [];
-  existingCards.forEach((card) => {
-    const selPlayer = card.querySelector('.mPlayer');
-    const selRes = card.querySelector('.mResultado');
-    const inpPecas = card.querySelector('.mPecasCartas');
-    savedData.push({
-      playerId: selPlayer ? selPlayer.value : '',
-      resultado: selRes ? selRes.value : '',
-      pecasCartas: inpPecas ? inpPecas.value : ''
-    });
-  });
 
   let vitoriasCount = 0;
   for (let i = 0; i < playerLimit; i++) {
@@ -234,15 +294,15 @@ function renderIndividualTable(container, players) {
         label = 'Pontinhos restantes:'; minVal = 0;
         maxVal = (playerLimit === 2) ? 153 : (playerLimit === 3 ? 118 : 69);
       }
-      fieldHtml = `<label class="lblPecasCartas" style="margin-top:8px; display:block;">${label}</label><input type="number" class="mPecasCartas" value="${defaultVal}" min="${minVal}" max="${maxVal}">`;
+      fieldHtml = `<label class="lblPecasCartas" style="margin-top:8px; display:block;">${label}</label><input type="number" class="mPecasCartas" value="${defaultVal}" min="${minVal}" max="${maxVal}" onchange="saveCurrentFormState()" oninput="saveCurrentFormState()">`;
     }
 
     htmlContent += `
       <div class="player-card" style="border:1px solid var(--card-border); background: #0b111e; padding:12px; margin-top:10px; border-radius:8px;" data-index="${i}">
         <label style="font-weight:600; color:var(--muted);">Jogador ${i+1}:</label>
-        <select class="mPlayer" onchange="validatePlayerSelection()">${options}</select>
+        <select class="mPlayer" onchange="saveCurrentFormState(); validatePlayerSelection()">${options}</select>
         <label style="margin-top:8px; display:block; font-weight:600; color:var(--muted);">Resultado:</label>
-        <select class="mResultado" onchange="handleResultChange(${i})">${resOptions}</select>
+        <select class="mResultado" onchange="saveCurrentFormState(); handleResultChange(${i})">${resOptions}</select>
         ${fieldHtml}
       </div>
     `;
@@ -253,30 +313,13 @@ function renderIndividualTable(container, players) {
   validatePlayerSelection();
 }
 
-/**
- * Renderiza os containers de equipes preservando os dados preenchidos anteriormente.
- */
-function renderTeamTable(container, players) {
+function renderTeamTable(container, players, savedTeams = []) {
   const sizeInput = document.getElementById('tamanhoGrupo');
   const countInput = document.getElementById('qtdEquipes');
 
   const teamSize = sizeInput ? parseInt(sizeInput.value) || 2 : 2;
   const numTeams = countInput ? parseInt(countInput.value) || 2 : 2;
   const totalPlayers = teamSize * numTeams;
-
-  const existingTeams = container.querySelectorAll('.team-container');
-  const savedTeams = [];
-  existingTeams.forEach((teamEl) => {
-    const selRes = teamEl.querySelector('.mTeamResultado');
-    const inpPecas = teamEl.querySelector('.mTeamPecasCartas');
-    const pSelects = teamEl.querySelectorAll('.mPlayer');
-    const pIds = Array.from(pSelects).map(s => s.value);
-    savedTeams.push({
-      resultado: selRes ? selRes.value : '',
-      pecasCartas: inpPecas ? inpPecas.value : '',
-      playerIds: pIds
-    });
-  });
 
   let htmlContent = '';
   let playerCounter = 0;
@@ -294,12 +337,12 @@ function renderTeamTable(container, players) {
     let defaultValPecas = currentSavedTeam.pecasCartas !== undefined && currentSavedTeam.pecasCartas !== '' ? currentSavedTeam.pecasCartas : (teamIdx === 0 ? 0 : 1);
     if (state.currentMod === 'Domino') {
       fieldHtml = `<label style="margin-top:8px; display:block; font-weight:600;">Pontinhos restantes da Equipe:</label>
-                   <input type="number" class="mTeamPecasCartas" data-team="${teamIdx}" value="${defaultValPecas}" min="0" max="118">`;
+                   <input type="number" class="mTeamPecasCartas" data-team="${teamIdx}" value="${defaultValPecas}" min="0" max="118" onchange="saveCurrentFormState()" oninput="saveCurrentFormState()">`;
     } else if (state.currentMod === 'Uno') {
       const virtualOpponents = totalPlayers - teamSize + 1;
       const maxCards = 108 - (virtualOpponents - 1);
       fieldHtml = `<label style="margin-top:8px; display:block; font-weight:600;">Cartas restantes da Equipe:</label>
-                   <input type="number" class="mTeamPecasCartas" data-team="${teamIdx}" value="${defaultValPecas}" min="${teamIdx === 0 ? 0 : 1}" max="${maxCards}">`;
+                   <input type="number" class="mTeamPecasCartas" data-team="${teamIdx}" value="${defaultValPecas}" min="${teamIdx === 0 ? 0 : 1}" max="${maxCards}" onchange="saveCurrentFormState()" oninput="saveCurrentFormState()">`;
     }
 
     htmlContent += `
@@ -309,7 +352,7 @@ function renderTeamTable(container, players) {
         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
           <div style="flex:1; min-width:140px;">
             <label style="font-weight:600;">Resultado da Equipe:</label>
-            <select class="mTeamResultado" data-team="${teamIdx}" onchange="handleTeamResultChange(${teamIdx})">${resOptions}</select>
+            <select class="mTeamResultado" data-team="${teamIdx}" onchange="saveCurrentFormState(); handleTeamResultChange(${teamIdx})">${resOptions}</select>
           </div>
           <div style="flex:1; min-width:140px;">${fieldHtml}</div>
         </div>
@@ -325,7 +368,7 @@ function renderTeamTable(container, players) {
       htmlContent += `
         <div style="margin-top:6px;">
           <label style="font-size:0.85rem; color:var(--muted);">Jogador ${p + 1} da Equipe:</label>
-          <select class="mPlayer" data-team="${teamIdx}" onchange="validatePlayerSelection()">${options}</select>
+          <select class="mPlayer" data-team="${teamIdx}" onchange="saveCurrentFormState(); validatePlayerSelection()">${options}</select>
         </div>
       `;
       playerCounter++;
@@ -339,10 +382,8 @@ function renderTeamTable(container, players) {
   validatePlayerSelection();
 }
 
-/**
- * Sincroniza automaticamente os resultados das equipes.
- */
 function handleTeamResultChange(changedTeamIdx) {
+  saveCurrentFormState();
   const formContainer = document.getElementById('matchForm');
   const teamResultSelects = formContainer ? formContainer.querySelectorAll('.mTeamResultado') : document.querySelectorAll('.mTeamResultado');
   const teamCount = teamResultSelects.length;
@@ -369,11 +410,9 @@ function handleTeamResultChange(changedTeamIdx) {
   }
 
   teamResultSelects.forEach((_, idx) => adjustTeamPieceCardLimits(idx));
+  saveCurrentFormState();
 }
 
-/**
- * Ajusta os limites de entradas de cartas ou pontinhos para o modo em equipe.
- */
 function adjustTeamPieceCardLimits(teamIdx) {
   const formContainer = document.getElementById('matchForm');
   const teamContainer = formContainer ? formContainer.querySelector(`.team-container[data-team-index="${teamIdx}"]`) : document.querySelector(`.team-container[data-team-index="${teamIdx}"]`);
@@ -404,10 +443,8 @@ function adjustTeamPieceCardLimits(teamIdx) {
   }
 }
 
-/**
- * Sincroniza automaticamente os resultados dos jogadores no modo individual.
- */
 function handleResultChange(changedIndex) {
+  saveCurrentFormState();
   const formContainer = document.getElementById('matchForm');
   const resultSelects = formContainer ? formContainer.querySelectorAll('.mResultado') : document.querySelectorAll('.mResultado');
   const playerCount = resultSelects.length;
@@ -435,11 +472,9 @@ function handleResultChange(changedIndex) {
   }
 
   for (let i = 0; i < playerCount; i++) adjustPieceCardLimits(i);
+  saveCurrentFormState();
 }
 
-/**
- * Ajusta os limites de entradas de cartas ou pontinhos no modo individual.
- */
 function adjustPieceCardLimits(index) {
   const formContainer = document.getElementById('matchForm');
   const cards = formContainer ? formContainer.querySelectorAll('.player-card') : document.querySelectorAll('.player-card');
@@ -474,10 +509,8 @@ function adjustPieceCardLimits(index) {
   }
 }
 
-/**
- * Valida os seletores de jogador para evitar seleção duplicada do mesmo jogador na mesma mesa.
- */
 function validatePlayerSelection() {
+  saveCurrentFormState();
   const formContainer = document.getElementById('matchForm');
   const playerSelects = formContainer ? formContainer.querySelectorAll('.mPlayer') : document.querySelectorAll('.mPlayer');
   const idCounts = {};

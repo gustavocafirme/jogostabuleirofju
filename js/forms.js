@@ -114,7 +114,6 @@ function renderMatchForm() {
 
   formContainer.innerHTML = htmlContent;
 
-  // Restaura controles globais do cache específico desta modalidade
   if (cachedData.tamanhoGrupo) {
     const tgEl = document.getElementById('tamanhoGrupo');
     if (tgEl) tgEl.value = cachedData.tamanhoGrupo;
@@ -136,9 +135,6 @@ function renderMatchForm() {
   updateDynamicPlayersForm();
 }
 
-/**
- * Alterna a aba de modo de jogo entre 'individual' e 'equipe'.
- */
 function setGameMode(mode) {
   saveCurrentFormState();
   state.modoJogo = mode;
@@ -294,7 +290,7 @@ function renderIndividualTable(container, players, savedData = []) {
         label = 'Pontinhos restantes:'; minVal = 0;
         maxVal = (playerLimit === 2) ? 153 : (playerLimit === 3 ? 118 : 69);
       }
-      fieldHtml = `<label class="lblPecasCartas" style="margin-top:8px; display:block;">${label}</label><input type="number" class="mPecasCartas" value="${defaultVal}" min="${minVal}" max="${maxVal}" onchange="saveCurrentFormState()" oninput="saveCurrentFormState()">`;
+      fieldHtml = `<label class="lblPecasCartas" style="margin-top:8px; display:block;">${label}</label><input type="number" class="mPecasCartas" value="${defaultVal}" min="${minVal}" max="${maxVal}" onchange="saveCurrentFormState(); validateDominoPoints()" oninput="saveCurrentFormState(); validateDominoPoints()">`;
     }
 
     htmlContent += `
@@ -337,12 +333,12 @@ function renderTeamTable(container, players, savedTeams = []) {
     let defaultValPecas = currentSavedTeam.pecasCartas !== undefined && currentSavedTeam.pecasCartas !== '' ? currentSavedTeam.pecasCartas : (teamIdx === 0 ? 0 : 1);
     if (state.currentMod === 'Domino') {
       fieldHtml = `<label style="margin-top:8px; display:block; font-weight:600;">Pontinhos restantes da Equipe:</label>
-                   <input type="number" class="mTeamPecasCartas" data-team="${teamIdx}" value="${defaultValPecas}" min="0" max="118" onchange="saveCurrentFormState()" oninput="saveCurrentFormState()">`;
+                   <input type="number" class="mTeamPecasCartas" data-team="${teamIdx}" value="${defaultValPecas}" min="0" max="118" onchange="saveCurrentFormState(); validateDominoPoints()" oninput="saveCurrentFormState(); validateDominoPoints()">`;
     } else if (state.currentMod === 'Uno') {
       const virtualOpponents = totalPlayers - teamSize + 1;
       const maxCards = 108 - (virtualOpponents - 1);
       fieldHtml = `<label style="margin-top:8px; display:block; font-weight:600;">Cartas restantes da Equipe:</label>
-                   <input type="number" class="mTeamPecasCartas" data-team="${teamIdx}" value="${defaultValPecas}" min="${teamIdx === 0 ? 0 : 1}" max="${maxCards}" onchange="saveCurrentFormState()" oninput="saveCurrentFormState()">`;
+                   <input type="number" class="mTeamPecasCartas" data-team="${teamIdx}" value="${defaultValPecas}" min="${teamIdx === 0 ? 0 : 1}" max="${maxCards}" onchange="saveCurrentFormState(); validateDominoPoints()" oninput="saveCurrentFormState(); validateDominoPoints()">`;
     }
 
     htmlContent += `
@@ -441,6 +437,7 @@ function adjustTeamPieceCardLimits(teamIdx) {
       pieceInput.value = 1;
     }
   }
+  validateDominoPoints();
 }
 
 function handleResultChange(changedIndex) {
@@ -499,13 +496,75 @@ function adjustPieceCardLimits(index) {
     if (result === 'derrota') {
       pieceInput.min = 1; pieceInput.max = maxCards;
       if (parseInt(pieceInput.value) < 1) pieceInput.value = 1;
+      pieceInput.disabled = false;
     } else {
       pieceInput.min = 0; pieceInput.max = 0; pieceInput.value = 0;
+      pieceInput.disabled = true; // Remove setas no Uno individual para o vencedor
     }
   } else if (state.currentMod === 'Domino') {
     let maxPoints = (playerCount === 2) ? 153 : (playerCount === 3 ? 118 : 69);
     pieceInput.min = 0; pieceInput.max = maxPoints;
     if (result === 'derrota' && parseInt(pieceInput.value) === 0) pieceInput.value = 1;
+  }
+  validateDominoPoints();
+}
+
+/**
+ * Valida se o vencedor do Dominó possui estritamente menos pontinhos que os demais e destaca em vermelho se não for o caso.
+ */
+function validateDominoPoints() {
+  if (state.currentMod !== 'Domino') return;
+  const formContainer = document.getElementById('matchForm');
+  if (!formContainer) return;
+
+  if (state.modoJogo === 'equipe') {
+    const teamContainers = formContainer.querySelectorAll('.team-container');
+    let teams = [];
+    teamContainers.forEach(tc => {
+      const res = tc.querySelector('.mTeamResultado')?.value;
+      const input = tc.querySelector('.mTeamPecasCartas');
+      const pts = parseInt(input?.value) || 0;
+      teams.push({ res, input, pts });
+    });
+
+    teams.forEach((t, idx) => {
+      if (!t.input) return;
+      if (t.res === 'vitoria') {
+        // Verifica se existe QUALQUER outra equipe com pontinhos menores ou iguais
+        const hasSmallerOrEqualOther = teams.some((other, oIdx) => oIdx !== idx && other.pts <= t.pts);
+        if (hasSmallerOrEqualOther) {
+          t.input.style.borderColor = 'var(--danger)';
+        } else {
+          t.input.style.borderColor = 'var(--card-border)';
+        }
+      } else {
+        t.input.style.borderColor = 'var(--card-border)';
+      }
+    });
+  } else {
+    const cards = formContainer.querySelectorAll('.player-card');
+    let participants = [];
+    cards.forEach(card => {
+      const res = card.querySelector('.mResultado')?.value;
+      const input = card.querySelector('.mPecasCartas');
+      const pts = parseInt(input?.value) || 0;
+      participants.push({ res, input, pts });
+    });
+
+    participants.forEach((p, idx) => {
+      if (!p.input) return;
+      if (p.res === 'vitoria') {
+        // Verifica se existe QUALQUER outro jogador com pontinhos menores ou iguais
+        const hasSmallerOrEqualOther = participants.some((other, oIdx) => oIdx !== idx && other.pts <= p.pts);
+        if (hasSmallerOrEqualOther) {
+          p.input.style.borderColor = 'var(--danger)';
+        } else {
+          p.input.style.borderColor = 'var(--card-border)';
+        }
+      } else {
+        p.input.style.borderColor = 'var(--card-border)';
+      }
+    });
   }
 }
 
@@ -534,5 +593,6 @@ function validatePlayerSelection() {
     }
   });
 
+  validateDominoPoints();
   return !hasDuplicate;
 }
